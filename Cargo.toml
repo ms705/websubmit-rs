@@ -1,0 +1,13 @@
+[package]
+name = "websubmit"
+version = "0.1.0"
+authors = ["Malte Schwarzkopf <ms705-git@srcf.ucam.org>"]
+edition = "2018"
+
+[dependencies]
+noria = { git = "https://github.com/mit-pdos/noria" }
+rocket = "0.4.2"
+#slog = "2.4.0"
+slog = { version = "2.4.0", features = ["max_level_trace", "release_max_level_trace"] }
+slog-term = "2.4.0"
+tokio = "0.1"
