@@ -5,6 +5,7 @@ use noria::{SyncControllerHandle, SyncTable, SyncView, ZookeeperAuthority};
 
 pub struct NoriaBackend {
     pub handle: SyncControllerHandle<ZookeeperAuthority, tokio::runtime::TaskExecutor>,
+    _rt: tokio::runtime::Runtime,
     _log: slog::Logger,
 
     _recipe: String,
@@ -51,6 +52,7 @@ impl NoriaBackend {
 
         NoriaBackend {
             handle: ch,
+            _rt: rt,
             _log: log,
 
             _recipe: recipe.to_owned(),
