@@ -20,7 +20,7 @@ impl NoriaBackend {
             Some(l) => l,
         };
 
-        let recipe = "CREATE TABLE answers (user varchar(255), lec int, q int, answer text, PRIMARY KEY (user));
+        let recipe = "CREATE TABLE answers (user varchar(255), lec int, q int, answer text, PRIMARY KEY (user, lec, q));
                       QUERY answers_by_lec: SELECT * FROM answers WHERE lec = ?;";
 
         debug!(log, "Finding Noria via Zookeeper...");
