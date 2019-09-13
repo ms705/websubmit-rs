@@ -1,12 +1,13 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
+extern crate clap;
 #[macro_use]
 extern crate rocket;
-
 #[macro_use]
 extern crate slog;
 extern crate slog_term;
 
+mod args;
 mod backend;
 
 use backend::{DataType, NoriaBackend};
@@ -78,8 +79,10 @@ fn index() -> &'static str {
 }
 
 fn main() {
+    let args = args::parse_args();
+
     let b = Arc::new(Mutex::new(NoriaBackend::new(
-        "127.0.0.1:2181/test",
+        &format!("127.0.0.1:2181/{}", args.class),
         Some(new_logger()),
     )));
 
