@@ -81,10 +81,13 @@ fn index() -> &'static str {
 fn main() {
     let args = args::parse_args();
 
-    let b = Arc::new(Mutex::new(NoriaBackend::new(
-        &format!("127.0.0.1:2181/{}", args.class),
-        Some(new_logger()),
-    )));
+    let b = Arc::new(Mutex::new(
+        NoriaBackend::new(
+            &format!("127.0.0.1:2181/{}", args.class),
+            Some(new_logger()),
+        )
+        .unwrap(),
+    ));
 
     rocket::ignite()
         .manage(b)

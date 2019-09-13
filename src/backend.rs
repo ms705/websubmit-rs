@@ -14,14 +14,13 @@ pub struct NoriaBackend {
 }
 
 impl NoriaBackend {
-    pub fn new(zk_addr: &str, log: Option<slog::Logger>) -> Self {
+    pub fn new(zk_addr: &str, log: Option<slog::Logger>) -> Result<Self, std::io::Error> {
         let log = match log {
             None => slog::Logger::root(slog::Discard, o!()),
             Some(l) => l,
         };
 
-        let recipe = "CREATE TABLE answers (user varchar(255), lec int, q int, answer text, PRIMARY KEY (user, lec, q));
-                      QUERY answers_by_lec: SELECT * FROM answers WHERE lec = ?;";
+        let recipe = std::fs::read_to_string("src/schema.sql")?;
 
         debug!(log, "Finding Noria via Zookeeper...");
 
@@ -50,7 +49,7 @@ impl NoriaBackend {
             .map(|(n, _)| (n.clone(), ch.view(&n).unwrap().into_sync()))
             .collect::<BTreeMap<String, SyncView>>();
 
-        NoriaBackend {
+        Ok(NoriaBackend {
             handle: ch,
             _rt: rt,
             _log: log,
@@ -58,6 +57,6 @@ impl NoriaBackend {
             _recipe: recipe.to_owned(),
             tables: inputs,
             views: outputs,
-        }
+        })
     }
 }
