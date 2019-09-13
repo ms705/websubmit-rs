@@ -1,7 +1,7 @@
 [package]
 name = "websubmit"
 version = "0.1.0"
-authors = ["Malte Schwarzkopf <ms705-git@srcf.ucam.org>"]
+authors = ["Malte Schwarzkopf <malte@cs.brown.edu>"]
 edition = "2018"
 
 [dependencies]
