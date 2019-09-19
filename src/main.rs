@@ -9,6 +9,7 @@ extern crate slog_term;
 
 mod args;
 mod backend;
+mod questions;
 
 use backend::{DataType, NoriaBackend};
 use rocket::request::Form;
@@ -22,55 +23,6 @@ pub fn new_logger() -> slog::Logger {
     use slog::Logger;
     use slog_term::term_full;
     Logger::root(Mutex::new(term_full()).fuse(), o!())
-}
-
-#[derive(Debug, FromForm)]
-struct FormInput {
-    q1: String,
-    sq1: String,
-}
-
-#[get("/<num>")]
-fn answers(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> String {
-    let mut bg = backend.lock().unwrap();
-    let mut h = bg.handle.view("answers_by_lec").unwrap().into_sync();
-
-    let key: DataType = (num as u64).into();
-
-    let res = h.lookup(&[key], true);
-
-    format!("{:?}", res)
-}
-
-#[get("/<num>")]
-fn questions(num: u8) -> io::Result<NamedFile> {
-    NamedFile::open(format!("static/m{}.html", num))
-}
-
-#[post("/<num>", data = "<data>")]
-fn questions_submit(
-    num: u8,
-    data: Form<FormInput>,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
-) -> String {
-    let mut bg = backend.lock().unwrap();
-
-    let num: DataType = (num as u64).into();
-
-    let q1: Vec<DataType> = vec![
-        "malte".into(),
-        num.clone(),
-        1.into(),
-        data.q1.clone().into(),
-    ];
-    let sq1: Vec<DataType> = vec!["malte".into(), num, 2.into(), data.sq1.clone().into()];
-
-    let mut table = bg.handle.table("answers").unwrap().into_sync();
-
-    let res = table.insert(q1);
-    let res2 = table.insert(sq1);
-
-    format!("submitted: {:?} {:?}", res, res2)
 }
 
 #[get("/")]
@@ -92,7 +44,10 @@ fn main() {
     rocket::ignite()
         .manage(b)
         .mount("/", routes![index])
-        .mount("/questions", routes![questions, questions_submit])
-        .mount("/answers", routes![answers])
+        .mount(
+            "/questions",
+            routes![questions::questions, questions::questions_submit],
+        )
+        .mount("/answers", routes![questions::answers])
         .launch();
 }
