@@ -8,6 +8,7 @@ extern crate crypto;
 extern crate slog;
 extern crate slog_term;
 
+mod admin;
 mod apikey;
 mod args;
 mod backend;
@@ -56,5 +57,6 @@ fn main() {
         .mount("/apikey/check", routes![apikey::check])
         .mount("/apikey/generate", routes![apikey::generate])
         .mount("/answers", routes![questions::answers])
+        .mount("/admin", routes![admin::admin])
         .launch();
 }
