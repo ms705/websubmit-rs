@@ -3,10 +3,12 @@
 extern crate clap;
 #[macro_use]
 extern crate rocket;
+extern crate crypto;
 #[macro_use]
 extern crate slog;
 extern crate slog_term;
 
+mod apikey;
 mod args;
 mod backend;
 mod questions;
@@ -15,6 +17,8 @@ use backend::{DataType, NoriaBackend};
 use rocket::request::Form;
 use rocket::response::NamedFile;
 use rocket::State;
+use rocket_contrib::templates::Template;
+use std::collections::HashMap;
 use std::io;
 use std::sync::{Arc, Mutex};
 
@@ -26,8 +30,8 @@ pub fn new_logger() -> slog::Logger {
 }
 
 #[get("/")]
-fn index() -> &'static str {
-    "Hello, CSCI 2390!"
+fn index() -> Template {
+    Template::render("login", HashMap::<String, String>::new())
 }
 
 fn main() {
@@ -42,12 +46,15 @@ fn main() {
     ));
 
     rocket::ignite()
+        .attach(Template::fairing())
         .manage(b)
         .mount("/", routes![index])
         .mount(
             "/questions",
             routes![questions::questions, questions::questions_submit],
         )
+        .mount("/apikey/check", routes![apikey::check])
+        .mount("/apikey/generate", routes![apikey::generate])
         .mount("/answers", routes![questions::answers])
         .launch();
 }

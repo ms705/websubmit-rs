@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 clap = "2.33.0"
+rust-crypto = "0.2.36"
 noria = { git = "https://github.com/mit-pdos/noria" }
 rocket = "0.4.2"
 #slog = "2.4.0"
