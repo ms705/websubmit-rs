@@ -14,13 +14,10 @@ mod args;
 mod backend;
 mod questions;
 
-use backend::{DataType, NoriaBackend};
-use rocket::request::Form;
-use rocket::response::NamedFile;
-use rocket::State;
+use backend::NoriaBackend;
+use rocket::http::Cookies;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
-use std::io;
 use std::sync::{Arc, Mutex};
 
 pub fn new_logger() -> slog::Logger {
@@ -31,8 +28,14 @@ pub fn new_logger() -> slog::Logger {
 }
 
 #[get("/")]
-fn index() -> Template {
-    Template::render("login", HashMap::<String, String>::new())
+fn index(cookies: Cookies) -> Template {
+    if let Some(_apikey) = cookies.get("apikey") {
+        // TODO validate API key
+        //check_apikey(apikey)
+        Template::render("leclist", HashMap::<String, String>::new())
+    } else {
+        Template::render("login", HashMap::<String, String>::new())
+    }
 }
 
 fn main() {
@@ -57,6 +60,7 @@ fn main() {
         .mount("/apikey/check", routes![apikey::check])
         .mount("/apikey/generate", routes![apikey::generate])
         .mount("/answers", routes![questions::answers])
+        .mount("/leclist", routes![questions::leclist])
         .mount("/admin", routes![admin::admin])
         .launch();
 }

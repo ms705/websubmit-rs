@@ -1,7 +1,10 @@
+use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
 use rocket::request::Form;
 use rocket::response::NamedFile;
 use rocket::State;
+use rocket_contrib::templates::Template;
+use std::collections::HashMap;
 use std::io;
 use std::sync::{Arc, Mutex};
 
@@ -9,6 +12,22 @@ use std::sync::{Arc, Mutex};
 pub(crate) struct FormInput {
     q1: String,
     sq1: String,
+}
+
+#[get("/")]
+pub(crate) fn leclist(apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+    let mut bg = backend.lock().unwrap();
+    let mut h = bg.handle.view("leclist").unwrap().into_sync();
+
+    let res = h
+        .lookup(&[(0 as u64).into()], false)
+        .expect("lecture list lookup failed");
+
+    let lecs: Vec<_> = res.into_iter().map(|r| r[1].clone()).collect();
+    let mut ctx = HashMap::new();
+    ctx.insert("lectures", lecs);
+
+    Template::render("leclist", &ctx)
 }
 
 #[get("/<num>")]
