@@ -1,10 +1,8 @@
-use crate::backend::{DataType, NoriaBackend};
+use crate::backend::NoriaBackend;
 use rocket::request::Form;
-use rocket::response::NamedFile;
 use rocket::State;
-use rocket_contrib::templates::{handlebars, Template};
+use rocket_contrib::templates::Template;
 use std::collections::HashMap;
-use std::io;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, FromForm)]
@@ -13,17 +11,17 @@ pub(crate) struct QuestionConfig {
 }
 
 #[get("/lec/<num>")]
-pub(crate) fn admin(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+pub(crate) fn admin(num: u8, _backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
     let mut ctx = HashMap::new();
     ctx.insert("LEC_NUM", num);
     Template::render("admin/lec", &ctx)
 }
 
-#[post("/lec/<num>", data = "<data>")]
+#[post("/lec/<_num>", data = "<_data>")]
 pub(crate) fn admin_submit(
-    num: u8,
-    data: Form<QuestionConfig>,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
+    _num: u8,
+    _data: Form<QuestionConfig>,
+    _backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> String {
     String::from("Lecture updated")
 }
