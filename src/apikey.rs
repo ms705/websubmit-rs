@@ -26,9 +26,9 @@ pub(crate) struct ApiKeySubmit {
 
 #[derive(Debug)]
 pub(crate) enum ApiKeyError {
-    BadCount,
+    Ambiguous,
     Missing,
-    Invalid,
+    BackendFailure(noria::error::ViewError),
 }
 
 impl<'a, 'r> FromRequest<'a, 'r> for ApiKey {
@@ -72,6 +72,24 @@ pub(crate) fn generate(
     Template::render("apikey/generate", &ctx)
 }
 
+fn check_api_key(backend: &Arc<Mutex<NoriaBackend>>, key: &str) -> Result<String, ApiKeyError> {
+    let mut bg = backend.lock().unwrap();
+    let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
+    match v.lookup(&[key.into()], true) {
+        Ok(rs) => {
+            if rs.len() < 1 {
+                Err(ApiKeyError::Missing)
+            } else if rs.len() > 1 {
+                Err(ApiKeyError::Ambiguous)
+            } else {
+                // user email
+                Ok((&rs[0][0]).into())
+            }
+        }
+        Err(e) => Err(ApiKeyError::BackendFailure(e)),
+    }
+}
+
 #[post("/", data = "<data>")]
 pub(crate) fn check(
     data: Form<ApiKeySubmit>,
@@ -79,16 +97,21 @@ pub(crate) fn check(
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Redirect {
     // check that the API key exists and set cookie
-    // insert into Noria if not exists
-    let mut bg = backend.lock().unwrap();
-    let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
-    let res = v.lookup(&[data.key.as_str().into()], true);
+    let res = check_api_key(&*backend, &data.key);
+    match res {
+        Err(ApiKeyError::BackendFailure(ref err)) => {
+            eprintln!("Problem communicating with Noria: {:?}", err);
+        }
+        Err(ApiKeyError::Missing) => {
+            eprintln!("No such API key: {}", data.key);
+        }
+        Err(ApiKeyError::Ambiguous) => {
+            eprintln!("Ambiguous API key: {}", data.key);
+        }
+        Ok(_) => (),
+    }
 
     if res.is_err() {
-        eprintln!("Problem communicating with Noria: {:?}", res);
-        Redirect::to("/")
-    } else if res.as_ref().unwrap().len() < 1 {
-        eprintln!("No such API key: {}", data.key);
         Redirect::to("/")
     } else {
         let cookie = Cookie::build("apikey", data.key.clone()).path("/").finish();
