@@ -12,6 +12,7 @@ mod admin;
 mod apikey;
 mod args;
 mod backend;
+mod config;
 mod questions;
 
 use backend::NoriaBackend;
@@ -41,7 +42,7 @@ fn index(cookies: Cookies) -> Template {
 fn main() {
     let args = args::parse_args();
 
-    let b = Arc::new(Mutex::new(
+    let backend = Arc::new(Mutex::new(
         NoriaBackend::new(
             &format!("127.0.0.1:2181/{}", args.class),
             Some(new_logger()),
@@ -49,9 +50,12 @@ fn main() {
         .unwrap(),
     ));
 
+    let config = args.config;
+
     rocket::ignite()
         .attach(Template::fairing())
-        .manage(b)
+        .manage(backend)
+        .manage(config)
         .mount("/", routes![index])
         .mount(
             "/questions",

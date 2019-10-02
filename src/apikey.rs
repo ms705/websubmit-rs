@@ -1,4 +1,5 @@
 use crate::backend::NoriaBackend;
+use crate::config::Config;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use rocket::http::Status;
@@ -48,12 +49,19 @@ impl<'a, 'r> FromRequest<'a, 'r> for ApiKey {
 pub(crate) fn generate(
     data: Form<ApiKeyRequest>,
     backend: State<Arc<Mutex<NoriaBackend>>>,
+    config: State<Config>,
 ) -> Template {
     // generate an API key from email address
     let mut hasher = Sha256::new();
     hasher.input_str(&data.email);
     // XXX(malte): need a salt or secret here to make API keys unforgeable
     let hash = hasher.result_str();
+
+    let is_admin = if config.staff.contains(&data.email) {
+        1.into()
+    } else {
+        0.into()
+    };
 
     // insert into Noria if not exists
     let mut bg = backend.lock().unwrap();
@@ -62,7 +70,7 @@ pub(crate) fn generate(
         .insert(vec![
             data.email.as_str().into(),
             hash.as_str().into(),
-            0.into(),
+            is_admin,
         ])
         .expect("failed to insert user!");
 
