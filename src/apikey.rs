@@ -52,6 +52,7 @@ pub(crate) fn generate(
     // generate an API key from email address
     let mut hasher = Sha256::new();
     hasher.input_str(&data.email);
+    // XXX(malte): need a salt or secret here to make API keys unforgeable
     let hash = hasher.result_str();
 
     // insert into Noria if not exists
