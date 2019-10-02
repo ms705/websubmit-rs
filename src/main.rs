@@ -65,6 +65,10 @@ fn main() {
         .mount("/apikey/generate", routes![apikey::generate])
         .mount("/answers", routes![questions::answers])
         .mount("/leclist", routes![questions::leclist])
-        .mount("/admin", routes![admin::admin])
+        .mount(
+            "/admin/lec/add",
+            routes![admin::lec_add, admin::lec_add_submit],
+        )
+        .mount("/admin/lec", routes![admin::lec, admin::lec_submit])
         .launch();
 }
