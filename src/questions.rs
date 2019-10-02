@@ -14,8 +14,15 @@ pub(crate) struct FormInput {
     sq1: String,
 }
 
+#[derive(Serialize)]
+struct LectureListEntry {
+    id: u64,
+    label: String,
+    num_qs: i64,
+}
+
 #[get("/")]
-pub(crate) fn leclist(apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+pub(crate) fn leclist(_apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("leclist").unwrap().into_sync();
 
@@ -23,7 +30,15 @@ pub(crate) fn leclist(apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>) 
         .lookup(&[(0 as u64).into()], false)
         .expect("lecture list lookup failed");
 
-    let lecs: Vec<_> = res.into_iter().map(|r| r[1].clone()).collect();
+    println!("res: {:?}", res);
+    let lecs: Vec<_> = res
+        .into_iter()
+        .map(|r| LectureListEntry {
+            id: r[0].clone().into(),
+            label: r[1].clone().into(),
+            num_qs: r[2].clone().into(),
+        })
+        .collect();
     let mut ctx = HashMap::new();
     ctx.insert("lectures", lecs);
 

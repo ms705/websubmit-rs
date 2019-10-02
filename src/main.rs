@@ -7,6 +7,8 @@ extern crate crypto;
 #[macro_use]
 extern crate slog;
 extern crate slog_term;
+#[macro_use]
+extern crate serde_derive;
 
 mod admin;
 mod apikey;
