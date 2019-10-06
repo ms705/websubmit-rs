@@ -15,12 +15,14 @@ mod apikey;
 mod args;
 mod backend;
 mod config;
+mod login;
 mod questions;
 
 use backend::NoriaBackend;
 use rocket::http::Cookies;
+use rocket::response::Redirect;
+use rocket::State;
 use rocket_contrib::templates::Template;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 pub fn new_logger() -> slog::Logger {
@@ -31,13 +33,16 @@ pub fn new_logger() -> slog::Logger {
 }
 
 #[get("/")]
-fn index(cookies: Cookies) -> Template {
-    if let Some(_apikey) = cookies.get("apikey") {
+fn index(cookies: Cookies, backend: State<Arc<Mutex<NoriaBackend>>>) -> Redirect {
+    if let Some(cookie) = cookies.get("apikey") {
+        let apikey: String = cookie.value().parse().ok().unwrap();
         // TODO validate API key
-        //check_apikey(apikey)
-        Template::render("leclist", HashMap::<String, String>::new())
+        match apikey::check_api_key(&*backend, &apikey) {
+            Ok(_user) => Redirect::to("/leclist"),
+            Err(_) => Redirect::to("/login"),
+        }
     } else {
-        Template::render("login", HashMap::<String, String>::new())
+        Redirect::to("/login")
     }
 }
 
@@ -67,6 +72,7 @@ fn main() {
         .mount("/apikey/generate", routes![apikey::generate])
         .mount("/answers", routes![questions::answers])
         .mount("/leclist", routes![questions::leclist])
+        .mount("/login", routes![login::login])
         .mount(
             "/admin/lec/add",
             routes![admin::lec_add, admin::lec_add_submit],
