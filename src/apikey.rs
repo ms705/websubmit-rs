@@ -13,7 +13,11 @@ use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub(crate) struct ApiKey(String);
+/// (username, apikey)
+pub(crate) struct ApiKey {
+    pub user: String,
+    pub key: String,
+}
 
 #[derive(Debug, FromForm)]
 pub(crate) struct ApiKeyRequest {
@@ -36,11 +40,15 @@ impl<'a, 'r> FromRequest<'a, 'r> for ApiKey {
     type Error = ApiKeyError;
 
     fn from_request(request: &'a Request<'r>) -> request::Outcome<ApiKey, Self::Error> {
+        let be = request.guard::<State<Arc<Mutex<NoriaBackend>>>>().unwrap();
         request
             .cookies()
             .get("apikey")
             .and_then(|cookie| cookie.value().parse().ok())
-            .map(|key| ApiKey(key))
+            .and_then(|key: String| match check_api_key(&be, &key) {
+                Ok(user) => Some(ApiKey { user, key }),
+                Err(_) => None,
+            })
             .into_outcome((Status::Unauthorized, ApiKeyError::Missing))
     }
 }
@@ -80,7 +88,10 @@ pub(crate) fn generate(
     Template::render("apikey/generate", &ctx)
 }
 
-fn check_api_key(backend: &Arc<Mutex<NoriaBackend>>, key: &str) -> Result<String, ApiKeyError> {
+pub(crate) fn check_api_key(
+    backend: &Arc<Mutex<NoriaBackend>>,
+    key: &str,
+) -> Result<String, ApiKeyError> {
     let mut bg = backend.lock().unwrap();
     let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
     match v.lookup(&[key.into()], true) {
