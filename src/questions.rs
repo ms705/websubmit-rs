@@ -1,11 +1,9 @@
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
 use rocket::request::Form;
-use rocket::response::NamedFile;
 use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
-use std::io;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, FromForm)]
@@ -30,7 +28,6 @@ pub(crate) fn leclist(_apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>)
         .lookup(&[(0 as u64).into()], false)
         .expect("lecture list lookup failed");
 
-    println!("res: {:?}", res);
     let lecs: Vec<_> = res
         .into_iter()
         .map(|r| LectureListEntry {
@@ -57,9 +54,10 @@ pub(crate) fn answers(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Stri
     format!("{:?}", res)
 }
 
-#[get("/<num>")]
-pub(crate) fn questions(num: u8) -> io::Result<NamedFile> {
-    NamedFile::open(format!("static/m{}.html", num))
+#[get("/<_num>")]
+pub(crate) fn questions(_num: u8) -> Template {
+    let ctx = HashMap::<String, String>::new();
+    Template::render("questions", &ctx)
 }
 
 #[post("/<num>", data = "<data>")]
