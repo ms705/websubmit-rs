@@ -1,12 +1,28 @@
 <html>
   <body>
-    <h1>Lecture {{{LEC_NUM}}} admin</h1>
+    <h1>Lecture {{{ lec_id }}} admin</h1>
 
-    <form action="/admin/lec/2" method="post" accept-charset="utf-8">
-      <label>Number of questions: <input name="num_qs" value="2" />
-      </label>
+    <h2>Current questions</h2>
+    <ol>
+      {{#each questions}}
+      <li>{{{ this.id }}}: {{{ this.prompt }}}
+      {{/each}}
+    </ol>
 
-      <input type="submit" value="Submit">
+    <h2>Add question</h2>
+    <form action="/admin/lec/{{{ lec_id }}}" method="post" accept-charset="utf-8">
+      <p>
+        <label>Question ID: <input name="q_id" />
+        </label>
+      </p>
+
+      <p>
+        <label>Question prompt:<br />
+        <textarea name="q_prompt" rows="10" cols="80">Ask something here.</textarea>
+        </label>
+      </p>
+
+      <input type="submit" value="Add question">
     </form>
   </body>
 </html>

@@ -36,14 +36,15 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
 }
 
 #[derive(Debug, FromForm)]
-pub(crate) struct QuestionConfig {
-    num_qs: u8,
+pub(crate) struct AddLectureQuestionForm {
+    q_id: u64,
+    q_prompt: String,
 }
 
 #[derive(Debug, FromForm)]
 pub(crate) struct AdminLecAdd {
-    lecid: u8,
-    leclabel: String,
+    lec_id: u8,
+    lec_label: String,
 }
 
 #[get("/")]
@@ -62,8 +63,8 @@ pub(crate) fn lec_add_submit(
     let mut table = bg.handle.table("lectures").unwrap().into_sync();
     table
         .insert(vec![
-            (data.lecid as u64).into(),
-            data.leclabel.to_string().into(),
+            (data.lec_id as u64).into(),
+            data.lec_label.to_string().into(),
         ])
         .expect("failed to insert lecture!");
 
@@ -73,16 +74,26 @@ pub(crate) fn lec_add_submit(
 #[get("/<num>")]
 pub(crate) fn lec(_adm: Admin, num: u8, _backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
     let mut ctx = HashMap::new();
-    ctx.insert("LEC_NUM", num);
+    ctx.insert("lec_id", num);
     Template::render("admin/lec", &ctx)
 }
 
-#[post("/<_num>", data = "<_data>")]
+#[post("/<num>", data = "<data>")]
 pub(crate) fn lec_submit(
     _adm: Admin,
-    _num: u8,
-    _data: Form<QuestionConfig>,
-    _backend: State<Arc<Mutex<NoriaBackend>>>,
-) -> String {
-    String::from("Lecture updated")
+    num: u8,
+    data: Form<AddLectureQuestionForm>,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+) -> Redirect {
+    let mut bg = backend.lock().unwrap();
+    let mut table = bg.handle.table("questions").unwrap().into_sync();
+    table
+        .insert(vec![
+            (num as u64).into(),
+            (data.q_id as u64).into(),
+            data.q_prompt.to_string().into(),
+        ])
+        .expect("failed to insert question!");
+
+    Redirect::to(format!("/admin/lec/{}", num))
 }
