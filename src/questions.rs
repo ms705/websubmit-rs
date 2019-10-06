@@ -13,6 +13,18 @@ pub(crate) struct FormInput {
 }
 
 #[derive(Serialize)]
+struct LectureQuestion {
+    id: u64,
+    prompt: String,
+}
+
+#[derive(Serialize)]
+struct LectureQuestionsContext {
+    lec_id: u8,
+    questions: Vec<LectureQuestion>,
+}
+
+#[derive(Serialize)]
 struct LectureListEntry {
     id: u64,
     label: String,
@@ -25,7 +37,7 @@ pub(crate) fn leclist(_apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>)
     let mut h = bg.handle.view("leclist").unwrap().into_sync();
 
     let res = h
-        .lookup(&[(0 as u64).into()], false)
+        .lookup(&[(0 as u64).into()], true)
         .expect("lecture list lookup failed");
 
     let lecs: Vec<_> = res
@@ -54,9 +66,27 @@ pub(crate) fn answers(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Stri
     format!("{:?}", res)
 }
 
-#[get("/<_num>")]
-pub(crate) fn questions(_num: u8) -> Template {
-    let ctx = HashMap::<String, String>::new();
+#[get("/<num>")]
+pub(crate) fn questions(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+    let mut bg = backend.lock().unwrap();
+    let mut h = bg.handle.view("qs_by_lec").unwrap().into_sync();
+    let key: DataType = (num as u64).into();
+
+    let res = h
+        .lookup(&[key], true)
+        .expect("lecture questions lookup failed");
+    let qs: Vec<_> = res
+        .into_iter()
+        .map(|r| LectureQuestion {
+            id: r[1].clone().into(),
+            prompt: r[2].clone().into(),
+        })
+        .collect();
+
+    let ctx = LectureQuestionsContext {
+        lec_id: num,
+        questions: qs,
+    };
     Template::render("questions", &ctx)
 }
 
