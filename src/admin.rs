@@ -23,7 +23,6 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
 
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Admin, Self::Error> {
         let apikey = request.guard::<ApiKey>().unwrap();
-
         let cfg = request.guard::<State<Config>>().unwrap();
 
         let res = if cfg.staff.contains(&apikey.user) {
