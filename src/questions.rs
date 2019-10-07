@@ -2,6 +2,7 @@ use crate::admin::Admin;
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
 use crate::config::Config;
+use crate::email;
 use chrono::naive::NaiveDateTime;
 use chrono::Local;
 use rocket::request::{Form, FormItems, FromForm};
@@ -204,6 +205,7 @@ pub(crate) fn questions_submit(
     num: u8,
     data: Form<LectureQuestionSubmission>,
     backend: State<Arc<Mutex<NoriaBackend>>>,
+    config: State<Config>,
 ) -> Redirect {
     let mut bg = backend.lock().unwrap();
 
@@ -222,6 +224,13 @@ pub(crate) fn questions_submit(
         ];
         table.insert(rec).expect("failed to write answer!");
     }
+
+    email::send(
+        config.staff.clone(),
+        format!("{} lecture {} questions", config.class, num),
+        format!("{:?}", data.answers),
+    )
+    .expect("failed to send email");
 
     Redirect::to("/leclist")
 }

@@ -1,9 +1,10 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 extern crate clap;
+extern crate crypto;
 #[macro_use]
 extern crate rocket;
-extern crate crypto;
+extern crate lettre;
 #[macro_use]
 extern crate slog;
 extern crate slog_term;
@@ -13,6 +14,7 @@ extern crate serde_derive;
 mod admin;
 mod apikey;
 mod args;
+mod email;
 mod backend;
 mod config;
 mod login;
