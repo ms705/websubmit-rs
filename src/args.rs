@@ -48,7 +48,8 @@ pub fn parse_args() -> Args {
 
     Args {
         class: String::from(args.value_of("class").unwrap()),
-        config: config::parse(args.value_of("config").expect("Failed to parse config!")),
+        config: config::parse(args.value_of("config").expect("Failed to parse config!"))
+            .expect("failed to parse config"),
         email_notification_addr: args.value_of("email_addr").map(String::from),
     }
 }

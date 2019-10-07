@@ -1706,6 +1706,14 @@ dependencies = [
 
 [[package]]
 name = "toml"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "toml"
 version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
@@ -2005,6 +2013,7 @@ dependencies = [
 name = "websubmit"
 version = "0.1.0"
 dependencies = [
+ "chrono 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "noria 0.1.2 (git+https://github.com/mit-pdos/noria)",
  "rocket 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2016,6 +2025,7 @@ dependencies = [
  "slog 2.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-term 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2284,6 +2294,7 @@ dependencies = [
 "checksum tokio-tower 0.1.1 (git+https://github.com/tower-rs/tokio-tower.git?rev=2e1d40903b9a294d8c984612400838dcdc8fd758)" = "<none>"
 "checksum tokio-udp 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "f02298505547f73e60f568359ef0d016d5acd6e830ab9bc7c4a5b3403440121b"
 "checksum tokio-uds 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "037ffc3ba0e12a0ab4aca92e5234e0dedeb48fddf6ccd260f1f150a36a9f2445"
+"checksum toml 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "736b60249cb25337bc196faa43ee12c705e426f3d55c214d73a4e7be06f92cb4"
 "checksum toml 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)" = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f"
 "checksum tower 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dc72f33b6a72c75c9df0037afce313018bae845f0ec7fdb9201b8768427a917f"
 "checksum tower-balance 0.1.0 (git+https://github.com/tower-rs/tower.git)" = "<none>"
