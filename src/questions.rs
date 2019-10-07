@@ -1,3 +1,4 @@
+use crate::admin::Admin;
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
 use rocket::request::{Form, FormItems, FromForm};
@@ -26,6 +27,19 @@ struct LectureQuestion {
 struct LectureQuestionsContext {
     lec_id: u8,
     questions: Vec<LectureQuestion>,
+}
+
+#[derive(Serialize)]
+struct LectureAnswer {
+    id: u64,
+    user: String,
+    answer: String,
+}
+
+#[derive(Serialize)]
+struct LectureAnswersContext {
+    lec_id: u8,
+    answers: Vec<LectureAnswer>,
 }
 
 #[derive(Serialize)]
@@ -60,18 +74,30 @@ pub(crate) fn leclist(_apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>)
 
 #[get("/<num>")]
 pub(crate) fn answers(
-    _apikey: ApiKey,
+    _admin: Admin,
     num: u8,
     backend: State<Arc<Mutex<NoriaBackend>>>,
-) -> String {
+) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("answers_by_lec").unwrap().into_sync();
 
     let key: DataType = (num as u64).into();
 
-    let res = h.lookup(&[key], true);
+    let res = h.lookup(&[key], true).expect("failed to look up answers!");
+    let answers: Vec<_> = res
+        .into_iter()
+        .map(|r| LectureAnswer {
+            id: r[2].clone().into(),
+            user: r[0].clone().into(),
+            answer: r[3].clone().into(),
+        })
+        .collect();
 
-    format!("{:?}", res)
+    let ctx = LectureAnswersContext {
+        lec_id: num,
+        answers: answers,
+    };
+    Template::render("answers", &ctx)
 }
 
 #[get("/<num>")]
@@ -151,7 +177,6 @@ pub(crate) fn questions_submit(
             (*id).into(),
             answer.clone().into(),
         ];
-        format!("inserting: {:?}", rec);
         table.insert(rec).expect("failed to write answer!");
     }
 

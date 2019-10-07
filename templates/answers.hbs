@@ -1,0 +1,20 @@
+<html>
+  <body>
+    <h1>Lecture {{{ lec_id }}} answers:</h1>
+
+    <table>
+      <tr>
+        <th>User</th>
+        <th>ID</th>
+        <th>Answer</th>
+      </tr>
+      {{#each answers}}
+      <tr>
+        <td>{{{ this.user }}}</td>
+        <td>{{{ this.id }}}</td>
+        <td>{{{ this.answer }}}</td>
+      </tr>
+      {{/each}}
+    </trable>
+  </body>
+</html>
