@@ -63,7 +63,8 @@ pub(crate) fn generate(
     // generate an API key from email address
     let mut hasher = Sha256::new();
     hasher.input_str(&data.email);
-    // XXX(malte): need a salt or secret here to make API keys unforgeable
+    // add a secret to make API keys unforgeable without access to the server
+    hasher.input_str(&config.secret);
     let hash = hasher.result_str();
 
     let is_admin = if config.staff.contains(&data.email) {

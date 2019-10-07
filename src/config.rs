@@ -12,6 +12,8 @@ pub struct Config {
     pub template_dir: String,
     /// Web resource root directory
     pub resource_dir: String,
+    /// Secret (for API key generation)
+    pub secret: String,
 }
 
 pub(crate) fn parse(path: &str) -> Result<Config, Error> {
@@ -41,5 +43,6 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
             .collect(),
         template_dir: value.get("template_dir").unwrap().as_str().unwrap().into(),
         resource_dir: value.get("resource_dir").unwrap().as_str().unwrap().into(),
+        secret: value.get("secret").unwrap().as_str().unwrap().into(),
     })
 }
