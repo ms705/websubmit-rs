@@ -1,7 +1,7 @@
 CREATE TABLE users (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));
 CREATE TABLE lectures (id int, label varchar(255), PRIMARY KEY (id));
 CREATE TABLE questions (lec int, q int, question text, PRIMARY KEY (lec, q));
-CREATE TABLE answers (`user` varchar(255), lec int, q int, answer text, PRIMARY KEY (user, lec, q));
+CREATE TABLE answers (`user` varchar(255), lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));
 
 submitted: SELECT answers.`user`, answers.lec, COUNT(answers.q) AS num_answered FROM answers GROUP BY answers.`user`, answers.lec;
 lec_qcount: SELECT questions.lec, COUNT(questions.q) AS qcount FROM questions GROUP BY questions.lec;

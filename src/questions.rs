@@ -2,6 +2,7 @@ use crate::admin::Admin;
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
 use crate::config::Config;
+use chrono::Local;
 use rocket::request::{Form, FormItems, FromForm};
 use rocket::response::Redirect;
 use rocket::State;
@@ -116,7 +117,7 @@ pub(crate) fn answers(
         .map(|r| LectureAnswer {
             id: r[2].clone().into(),
             user: r[0].clone().into(),
-            answer: r[3].clone().into(),
+            answer: to_html(r[3].clone().into()),
         })
         .collect();
 
@@ -194,6 +195,7 @@ pub(crate) fn questions_submit(
     let mut bg = backend.lock().unwrap();
 
     let num: DataType = (num as u64).into();
+    let ts: DataType = DataType::Timestamp(Local::now().naive_local());
 
     let mut table = bg.handle.table("answers").unwrap().into_sync();
 
@@ -203,6 +205,7 @@ pub(crate) fn questions_submit(
             num.clone(),
             (*id).into(),
             answer.clone().into(),
+            ts,
         ];
         table.insert(rec).expect("failed to write answer!");
     }
