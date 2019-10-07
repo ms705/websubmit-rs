@@ -1,15 +1,19 @@
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
-use rocket::request::Form;
+use rocket::request::{Form, FormItems, FromForm};
+use rocket::response::Redirect;
 use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, FromForm)]
-pub(crate) struct FormInput {
-    q1: String,
-    sq1: String,
+pub(crate) enum LectureQuestionFormError {
+    Invalid,
+}
+
+#[derive(Debug)]
+pub(crate) struct LectureQuestionSubmission {
+    answers: Vec<(u64, String)>,
 }
 
 #[derive(Serialize)]
@@ -55,7 +59,11 @@ pub(crate) fn leclist(_apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>)
 }
 
 #[get("/<num>")]
-pub(crate) fn answers(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> String {
+pub(crate) fn answers(
+    _apikey: ApiKey,
+    num: u8,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+) -> String {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("answers_by_lec").unwrap().into_sync();
 
@@ -67,7 +75,11 @@ pub(crate) fn answers(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Stri
 }
 
 #[get("/<num>")]
-pub(crate) fn questions(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+pub(crate) fn questions(
+    _apikey: ApiKey,
+    num: u8,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("qs_by_lec").unwrap().into_sync();
     let key: DataType = (num as u64).into();
@@ -90,28 +102,58 @@ pub(crate) fn questions(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Te
     Template::render("questions", &ctx)
 }
 
+impl<'f> FromForm<'f> for LectureQuestionSubmission {
+    // In practice, we'd use a more descriptive error type.
+    type Error = LectureQuestionFormError;
+
+    fn from_form(
+        items: &mut FormItems<'f>,
+        strict: bool,
+    ) -> Result<LectureQuestionSubmission, Self::Error> {
+        let mut answers: Vec<(u64, String)> = vec![];
+
+        for item in items {
+            let (key, value) = item.key_value_decoded();
+            if key.as_str().starts_with("q_") {
+                let num = u64::from_str_radix(&key.as_str()[2..], 10)
+                    .map_err(|_| LectureQuestionFormError::Invalid)?;
+                answers.push((num, value));
+            } else {
+                if strict {
+                    return Err(LectureQuestionFormError::Invalid);
+                } else {
+                    /* allow extra value when not strict */
+                }
+            }
+        }
+
+        Ok(LectureQuestionSubmission { answers })
+    }
+}
+
 #[post("/<num>", data = "<data>")]
 pub(crate) fn questions_submit(
+    apikey: ApiKey,
     num: u8,
-    data: Form<FormInput>,
+    data: Form<LectureQuestionSubmission>,
     backend: State<Arc<Mutex<NoriaBackend>>>,
-) -> String {
+) -> Redirect {
     let mut bg = backend.lock().unwrap();
 
     let num: DataType = (num as u64).into();
 
-    let q1: Vec<DataType> = vec![
-        "malte".into(),
-        num.clone(),
-        1.into(),
-        data.q1.clone().into(),
-    ];
-    let sq1: Vec<DataType> = vec!["malte".into(), num, 2.into(), data.sq1.clone().into()];
-
     let mut table = bg.handle.table("answers").unwrap().into_sync();
 
-    let res = table.insert(q1);
-    let res2 = table.insert(sq1);
+    for (id, answer) in &data.answers {
+        let rec: Vec<DataType> = vec![
+            apikey.user.clone().into(),
+            num.clone(),
+            (*id).into(),
+            answer.clone().into(),
+        ];
+        format!("inserting: {:?}", rec);
+        table.insert(rec).expect("failed to write answer!");
+    }
 
-    format!("submitted: {:?} {:?}", res, res2)
+    Redirect::to(format!("/answers/{}", num))
 }
