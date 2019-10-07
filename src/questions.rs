@@ -2,6 +2,7 @@ use crate::admin::Admin;
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
 use crate::config::Config;
+use chrono::naive::NaiveDateTime;
 use chrono::Local;
 use rocket::request::{Form, FormItems, FromForm};
 use rocket::response::Redirect;
@@ -36,6 +37,7 @@ struct LectureAnswer {
     id: u64,
     user: String,
     answer: String,
+    time: Option<NaiveDateTime>,
 }
 
 #[derive(Serialize)]
@@ -122,6 +124,11 @@ pub(crate) fn answers(
             id: r[2].clone().into(),
             user: r[0].clone().into(),
             answer: r[3].clone().into(),
+            time: if let DataType::Timestamp(ts) = r[4] {
+                Some(ts)
+            } else {
+                None
+            },
         })
         .collect();
 
