@@ -93,7 +93,8 @@ pub(crate) fn generate(
 
     // return to user
     let mut ctx = HashMap::new();
-    ctx.insert("APIKEY", hash);
+    ctx.insert("apikey_email", data.email.clone());
+    ctx.insert("parent", "layout".into());
     Template::render("apikey/generate", &ctx)
 }
 
