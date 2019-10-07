@@ -205,7 +205,7 @@ pub(crate) fn questions_submit(
             num.clone(),
             (*id).into(),
             answer.clone().into(),
-            ts,
+            ts.clone(),
         ];
         table.insert(rec).expect("failed to write answer!");
     }
