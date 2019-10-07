@@ -1,5 +1,4 @@
-<html>
-  <body>
+{{#*inline "page"}}
     <h1>Lecture {{{ lec_id }}} admin</h1>
 
     <h2>Current questions</h2>
@@ -24,5 +23,5 @@
 
       <input type="submit" value="Add question">
     </form>
-  </body>
-</html>
+{{/inline}}
+{{~> (parent)~}}

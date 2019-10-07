@@ -28,6 +28,7 @@ struct LectureQuestion {
 struct LectureQuestionsContext {
     lec_id: u8,
     questions: Vec<LectureQuestion>,
+    parent: &'static str,
 }
 
 #[derive(Serialize)]
@@ -41,6 +42,7 @@ struct LectureAnswer {
 struct LectureAnswersContext {
     lec_id: u8,
     answers: Vec<LectureAnswer>,
+    parent: &'static str,
 }
 
 #[derive(Serialize)]
@@ -55,6 +57,7 @@ struct LectureListEntry {
 struct LectureListContext {
     admin: bool,
     lectures: Vec<LectureListEntry>,
+    parent: &'static str,
 }
 
 #[get("/")]
@@ -95,6 +98,7 @@ pub(crate) fn leclist(
     let ctx = LectureListContext {
         admin: admin,
         lectures: lecs,
+        parent: "layout",
     };
 
     Template::render("leclist", &ctx)
@@ -124,6 +128,7 @@ pub(crate) fn answers(
     let ctx = LectureAnswersContext {
         lec_id: num,
         answers: answers,
+        parent: "layout",
     };
     Template::render("answers", &ctx)
 }
@@ -152,6 +157,7 @@ pub(crate) fn questions(
     let ctx = LectureQuestionsContext {
         lec_id: num,
         questions: qs,
+        parent: "layout",
     };
     Template::render("questions", &ctx)
 }

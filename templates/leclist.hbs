@@ -1,5 +1,4 @@
-<html>
-  <body>
+{{#*inline "page"}}
   <h1>List of lectures</h1>
 
   <ol>
@@ -17,6 +16,5 @@
   <hr />
   Admin: <a href="/admin/lec/add">add lecture</a>
   {{/if}}
-
-  </body>
-</html>
+{{/inline}}
+{{~> (parent)~}}

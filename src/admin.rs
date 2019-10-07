@@ -49,7 +49,9 @@ pub(crate) struct AdminLecAdd {
 
 #[get("/")]
 pub(crate) fn lec_add(_adm: Admin) -> Template {
-    Template::render("admin/lecadd", HashMap::<String, String>::new())
+    let mut ctx = HashMap::new();
+    ctx.insert("parent", String::from("layout"));
+    Template::render("admin/lecadd", &ctx)
 }
 
 #[post("/", data = "<data>")]
@@ -74,7 +76,8 @@ pub(crate) fn lec_add_submit(
 #[get("/<num>")]
 pub(crate) fn lec(_adm: Admin, num: u8, _backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
     let mut ctx = HashMap::new();
-    ctx.insert("lec_id", num);
+    ctx.insert("lec_id", format!("{}", num));
+    ctx.insert("parent", String::from("layout"));
     Template::render("admin/lec", &ctx)
 }
 

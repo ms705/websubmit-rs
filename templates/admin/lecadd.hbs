@@ -1,5 +1,4 @@
-<html>
-  <body>
+{{#*inline "page"}}
     <h1>Admin: add lecture</h1>
 
     <form action="/admin/lec/add" method="post" accept-charset="utf-8">
@@ -14,5 +13,5 @@
 
       <input type="submit" value="Submit">
     </form>
-  </body>
-</html>
+{{/inline}}
+{{~> (parent)~}}

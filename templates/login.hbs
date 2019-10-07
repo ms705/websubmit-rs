@@ -1,5 +1,4 @@
-<html>
-  <body>
+{{#*inline "page"}}
   <h1>Welcome to the {{{ CLASS_ID }}} submission system!</h1>
 
   <h5>Generate API key:</h5>
@@ -21,5 +20,5 @@
     </label>
     <input type="submit" value="Submit">
   </form>
-  </body>
-</html>
+{{/inline}}
+{{~> (parent)~}}

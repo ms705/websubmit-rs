@@ -1,5 +1,4 @@
-<html>
-  <body>
+{{#*inline "page"}}
     <h1>Lecture {{{ lec_id }}} answers:</h1>
 
     <table>
@@ -15,6 +14,6 @@
         <td>{{{ this.answer }}}</td>
       </tr>
       {{/each}}
-    </trable>
-  </body>
-</html>
+    </table>
+{{/inline}}
+{{~> (parent)~}}

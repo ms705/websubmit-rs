@@ -1,5 +1,4 @@
-<html>
-  <body>
+{{#*inline "page"}}
     <h1>Lecture {{{ lec_id }}} questions: {{{ lec_label }}}</h1>
 
     <form action="/questions/{{{ lec_id }}}" method="post" accept-charset="utf-8">
@@ -13,5 +12,5 @@
 
       <input type="submit" value="Submit">
     </form>
-  </body>
-</html>
+{{/inline}}
+{{~> (parent)~}}
