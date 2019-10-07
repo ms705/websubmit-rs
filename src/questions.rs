@@ -117,7 +117,7 @@ pub(crate) fn answers(
         .map(|r| LectureAnswer {
             id: r[2].clone().into(),
             user: r[0].clone().into(),
-            answer: to_html(r[3].clone().into()),
+            answer: r[3].clone().into(),
         })
         .collect();
 
