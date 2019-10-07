@@ -1,0 +1,17 @@
+<html>
+  <body>
+    <h1>Lecture {{{ lec_id }}} questions: {{{ lec_label }}}</h1>
+
+    <form action="/questions/{{{ lec_id }}}" method="post" accept-charset="utf-8">
+      {{#each questions}}
+      <label>{{{ this.prompt }}}:
+        <p>
+        <textarea name="q_{{{ this.id }}}" rows="10" cols="80">Write something here.</textarea>
+        </p>
+      </label>
+      {{/each}}
+
+      <input type="submit" value="Submit">
+    </form>
+  </body>
+</html>
