@@ -1,11 +1,11 @@
 use crate::admin::Admin;
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
+use crate::config::Config;
 use rocket::request::{Form, FormItems, FromForm};
 use rocket::response::Redirect;
 use rocket::State;
 use rocket_contrib::templates::Template;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 pub(crate) enum LectureQuestionFormError {
@@ -46,13 +46,27 @@ struct LectureAnswersContext {
 struct LectureListEntry {
     id: u64,
     label: String,
-    num_qs: i64,
+    num_qs: u64,
+    num_answered: u64,
+}
+
+#[derive(Serialize)]
+struct LectureListContext {
+    admin: bool,
+    lectures: Vec<LectureListEntry>,
 }
 
 #[get("/")]
-pub(crate) fn leclist(_apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+pub(crate) fn leclist(
+    apikey: ApiKey,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+    config: State<Config>,
+) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("leclist").unwrap().into_sync();
+
+    let user = apikey.user.clone();
+    let admin = config.staff.contains(&user);
 
     let res = h
         .lookup(&[(0 as u64).into()], true)
@@ -60,14 +74,27 @@ pub(crate) fn leclist(_apikey: ApiKey, backend: State<Arc<Mutex<NoriaBackend>>>)
 
     let lecs: Vec<_> = res
         .into_iter()
+        .map(|mut r| {
+            if let DataType::None = r[3] {
+                r[3] = DataType::UnsignedInt(0);
+            }
+            if let DataType::None = r[4] {
+                r[4] = DataType::UnsignedInt(0);
+            }
+            r
+        })
         .map(|r| LectureListEntry {
             id: r[0].clone().into(),
             label: r[1].clone().into(),
-            num_qs: r[2].clone().into(),
+            num_qs: r[3].clone().into(),
+            num_answered: r[4].clone().into(),
         })
         .collect();
-    let mut ctx = HashMap::new();
-    ctx.insert("lectures", lecs);
+
+    let ctx = LectureListContext {
+        admin: admin,
+        lectures: lecs,
+    };
 
     Template::render("leclist", &ctx)
 }
