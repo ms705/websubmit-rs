@@ -3,12 +3,13 @@ use lettre::Transport;
 use lettre_email::Email;
 
 pub(crate) fn send(
+    sender: String,
     recipients: Vec<String>,
     subject: String,
     text: String,
 ) -> Result<(), lettre::sendmail::error::Error> {
     let email = Email::builder()
-        .from("malte@csci2390-submit.cs.brown.edu")
+        .from(sender)
         .to(recipients[0].clone())
         .subject(subject)
         .text(text)

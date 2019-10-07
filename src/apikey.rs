@@ -85,6 +85,7 @@ pub(crate) fn generate(
         .expect("failed to insert user!");
 
     email::send(
+        "no-reply@csci2390-submit.cs.brown.edu".into(),
         vec![data.email.clone()],
         format!("{} API key", config.class),
         format!("Your {} API key is: {}", config.class, hash.as_str()),
