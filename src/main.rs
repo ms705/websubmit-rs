@@ -47,6 +47,10 @@ fn index(cookies: Cookies, backend: State<Arc<Mutex<NoriaBackend>>>) -> Redirect
 }
 
 fn main() {
+    use rocket_contrib::serve::StaticFiles;
+    use rocket_contrib::templates::Engines;
+    use std::path::Path;
+
     let args = args::parse_args();
 
     let backend = Arc::new(Mutex::new(
@@ -59,10 +63,20 @@ fn main() {
 
     let config = args.config;
 
+    let template_dir = config.template_dir.clone();
+    let resource_dir = config.resource_dir.clone();
+
     rocket::ignite()
-        .attach(Template::fairing())
+        .attach(Template::custom(move |engines: &mut Engines| {
+            engines
+                .handlebars
+                .register_templates_directory(".hbs", Path::new(&template_dir))
+                .expect("failed to set template path!");
+        }))
         .manage(backend)
         .manage(config)
+        .mount("/css", StaticFiles::from(format!("{}/css", resource_dir)))
+        .mount("/js", StaticFiles::from(format!("{}/js", resource_dir)))
         .mount("/", routes![index])
         .mount(
             "/questions",

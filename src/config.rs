@@ -8,6 +8,10 @@ pub struct Config {
     pub class: String,
     /// Staff email addresses
     pub staff: Vec<String>,
+    /// Web template directory
+    pub template_dir: String,
+    /// Web resource root directory
+    pub resource_dir: String,
 }
 
 pub(crate) fn parse(path: &str) -> Result<Config, Error> {
@@ -35,5 +39,7 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
             .into_iter()
             .map(|v| v.as_str().unwrap().into())
             .collect(),
+        template_dir: value.get("template_dir").unwrap().as_str().unwrap().into(),
+        resource_dir: value.get("resource_dir").unwrap().as_str().unwrap().into(),
     })
 }
