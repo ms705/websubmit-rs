@@ -223,5 +223,5 @@ pub(crate) fn questions_submit(
         table.insert(rec).expect("failed to write answer!");
     }
 
-    Redirect::to(format!("/answers/{}", num))
+    Redirect::to("/leclist")
 }
