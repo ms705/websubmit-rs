@@ -9,6 +9,7 @@ chrono = { version = "0.4.0", features = ["serde"] }
 clap = "2.33.0"
 rust-crypto = "0.2.36"
 lettre = "0.9.2"
+lettre_email = "0.9.2"
 noria = { git = "https://github.com/mit-pdos/noria" }
 rocket = "0.4.2"
 #slog = "2.4.0"

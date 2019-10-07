@@ -1,5 +1,6 @@
 use crate::backend::NoriaBackend;
 use crate::config::Config;
+use crate::email;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use rocket::http::Status;
@@ -81,6 +82,13 @@ pub(crate) fn generate(
             is_admin,
         ])
         .expect("failed to insert user!");
+
+    email::send(
+        vec![data.email.clone()],
+        format!("{} API key", config.class),
+        format!("Your {} API key is: {}", config.class, hash.as_str()),
+    )
+    .expect("failed to send API key email");
 
     // return to user
     let mut ctx = HashMap::new();

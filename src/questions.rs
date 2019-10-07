@@ -228,7 +228,14 @@ pub(crate) fn questions_submit(
     email::send(
         config.staff.clone(),
         format!("{} lecture {} questions", config.class, num),
-        format!("{:?}", data.answers),
+        format!(
+            "{}",
+            data.answers
+                .iter()
+                .map(|(i, t)| format!("Question {}:\n{}", i, t))
+                .collect::<Vec<_>>()
+                .join("\n-----\n")
+        ),
     )
     .expect("failed to send email");
 

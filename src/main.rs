@@ -5,6 +5,7 @@ extern crate crypto;
 #[macro_use]
 extern crate rocket;
 extern crate lettre;
+extern crate lettre_email;
 #[macro_use]
 extern crate slog;
 extern crate slog_term;
