@@ -81,7 +81,8 @@ pub(crate) fn leclist(
 
     let lecs: Vec<_> = res
         .into_iter()
-        .map(|mut r| {
+        .filter(|r| !r[2].is_none())
+        /*.map(|mut r| {
             if let DataType::None = r[3] {
                 r[3] = DataType::UnsignedInt(0);
             }
@@ -89,12 +90,12 @@ pub(crate) fn leclist(
                 r[4] = DataType::UnsignedInt(0);
             }
             r
-        })
+        })*/
         .map(|r| LectureListEntry {
             id: r[0].clone().into(),
             label: r[1].clone().into(),
-            num_qs: r[3].clone().into(),
-            num_answered: r[4].clone().into(),
+            num_qs: r[2].clone().into(),
+            num_answered: /*r[4].clone().into()*/ 0u64,
         })
         .collect();
 
