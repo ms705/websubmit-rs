@@ -24,6 +24,7 @@ pub(crate) struct LectureQuestionSubmission {
 struct LectureQuestion {
     id: u64,
     prompt: String,
+    answer: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -144,22 +145,41 @@ pub(crate) fn answers(
 
 #[get("/<num>")]
 pub(crate) fn questions(
-    _apikey: ApiKey,
+    apikey: ApiKey,
     num: u8,
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Template {
+    use std::collections::HashMap;
+
     let mut bg = backend.lock().unwrap();
-    let mut h = bg.handle.view("qs_by_lec").unwrap().into_sync();
+    let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
     let key: DataType = (num as u64).into();
 
-    let res = h
+    let mut ah = bg.handle.view("my_answers_for_lec").unwrap().into_sync();
+    let answers_res = ah
+        .lookup(&[(num as u64).into(), apikey.user.clone().into()], true)
+        .expect("lecture questions lookup failed");
+    let mut answers = HashMap::new();
+
+    for r in answers_res {
+        let id: u64 = r[2].clone().into();
+        let atext: String = r[3].clone().into();
+        answers.insert(id, atext);
+    }
+
+    let res = qh
         .lookup(&[key], true)
         .expect("lecture questions lookup failed");
     let qs: Vec<_> = res
         .into_iter()
-        .map(|r| LectureQuestion {
-            id: r[1].clone().into(),
-            prompt: r[2].clone().into(),
+        .map(|r| {
+            let id: u64 = r[1].clone().into();
+            let answer = answers.get(&id).map(|s| s.to_owned());
+            LectureQuestion {
+                id: id,
+                prompt: r[2].clone().into(),
+                answer: answer,
+            }
         })
         .collect();
 
