@@ -14,6 +14,8 @@ pub struct Config {
     pub resource_dir: String,
     /// Secret (for API key generation)
     pub secret: String,
+    /// Whether to send emails
+    pub send_emails: bool,
 }
 
 pub(crate) fn parse(path: &str) -> Result<Config, Error> {
@@ -44,5 +46,6 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
         template_dir: value.get("template_dir").unwrap().as_str().unwrap().into(),
         resource_dir: value.get("resource_dir").unwrap().as_str().unwrap().into(),
         secret: value.get("secret").unwrap().as_str().unwrap().into(),
+        send_emails: value.get("send_emails").unwrap().as_bool().unwrap().into(),
     })
 }

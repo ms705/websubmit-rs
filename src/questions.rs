@@ -246,20 +246,22 @@ pub(crate) fn questions_submit(
         table.insert(rec).expect("failed to write answer!");
     }
 
-    email::send(
-        apikey.user.clone(),
-        config.staff.clone(),
-        format!("{} lecture {} questions", config.class, num),
-        format!(
-            "{}",
-            data.answers
-                .iter()
-                .map(|(i, t)| format!("Question {}:\n{}", i, t))
-                .collect::<Vec<_>>()
-                .join("\n-----\n")
-        ),
-    )
-    .expect("failed to send email");
+    if config.send_emails {
+        email::send(
+            apikey.user.clone(),
+            config.staff.clone(),
+            format!("{} lecture {} questions", config.class, num),
+            format!(
+                "{}",
+                data.answers
+                    .iter()
+                    .map(|(i, t)| format!("Question {}:\n{}", i, t))
+                    .collect::<Vec<_>>()
+                    .join("\n-----\n")
+            ),
+        )
+        .expect("failed to send email");
+    }
 
     Redirect::to("/leclist")
 }
