@@ -8,16 +8,18 @@ pub(crate) fn send(
     subject: String,
     text: String,
 ) -> Result<(), lettre::sendmail::error::Error> {
-    let email = Email::builder()
-        .from(sender)
-        .to(recipients[0].clone())
-        .subject(subject)
-        .text(text)
-        .build()
-        .expect("couldn't construct email");
-
     let mut mailer = SendmailTransport::new();
-    let result = mailer.send(email.into());
 
-    result
+    for recipient in recipients {
+        let email = Email::builder()
+            .from(sender.clone())
+            .to(recipient)
+            .subject(subject.clone())
+            .text(text.clone())
+            .build()
+            .expect("couldn't construct email");
+        mailer.send(email.into())?
+    }
+
+    Ok(())
 }
