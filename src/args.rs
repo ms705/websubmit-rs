@@ -11,7 +11,6 @@ EXAMPLES:
 pub struct Args {
     pub class: String,
     pub config: config::Config,
-    pub email_notification_addr: Option<String>,
 }
 
 pub fn parse_args() -> Args {
@@ -36,13 +35,6 @@ pub fn parse_args() -> Args {
                 .required(true)
                 .help("Short textual identifier for the class hosted (used as Noria deployment name)."),
         )
-        .arg(
-            Arg::with_name("email_addr")
-                .long("email_addr")
-                .takes_value(true)
-                .required(false)
-                .help("Email address to send notifications to"),
-        )
         .after_help(WEBSUBMIT_USAGE)
         .get_matches();
 
@@ -50,6 +42,5 @@ pub fn parse_args() -> Args {
         class: String::from(args.value_of("class").unwrap()),
         config: config::parse(args.value_of("config").expect("Failed to parse config!"))
             .expect("failed to parse config"),
-        email_notification_addr: args.value_of("email_addr").map(String::from),
     }
 }
