@@ -10,7 +10,7 @@ requires installing Zookeeper on your machine):
 noria$ cargo run --release --bin noria-server -- --deployment myclass
 ```
 Then you can run the web application, which will automatically connect
-to Noria:
+to Noria deployment `myclass`:
 ```
 websubmit-rs$ cargo run --release -- -i myclass
 ```
@@ -18,8 +18,9 @@ The web interface will be served on `localhost:8000`. Note that the
 templates included in this repository are very basic; in practice, you
 will want to customize the files in `templates`.
 
-The application also supports specifying a custom configuration file
-(`-c myconfig.toml`), which is a TOML file with the following format:
+By default, the application will read configuration file `sample-config.toml`,
+but a real deployment will specify a custom config (`-c myconfig.toml`).
+Configuration files are TOML files with the following format:
 ```
 # short class ID (human readable)
 class = "CSCI 2390"
