@@ -55,20 +55,19 @@ pub(crate) fn lec_add(_adm: Admin) -> Template {
 }
 
 #[post("/", data = "<data>")]
-pub(crate) fn lec_add_submit(
+pub(crate) async fn lec_add_submit(
     _adm: Admin,
     data: Form<AdminLecAdd>,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
+    backend: State<'_, Arc<Mutex<NoriaBackend>>>,
 ) -> Redirect {
     // insert into Noria if not exists
     let mut bg = backend.lock().unwrap();
-    let mut table = bg.handle.table("lectures").unwrap().into_sync();
+    let mut table = bg.handle.table("lectures").await.unwrap();
     table
         .insert(vec![
             (data.lec_id as u64).into(),
             data.lec_label.to_string().into(),
-        ])
-        .expect("failed to insert lecture!");
+        ]);
 
     Redirect::to("/leclist")
 }
@@ -82,21 +81,19 @@ pub(crate) fn lec(_adm: Admin, num: u8, _backend: State<Arc<Mutex<NoriaBackend>>
 }
 
 #[post("/<num>", data = "<data>")]
-pub(crate) fn lec_submit(
+pub(crate) async fn lec_submit(
     _adm: Admin,
     num: u8,
     data: Form<AddLectureQuestionForm>,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
+    backend: State<'_, Arc<Mutex<NoriaBackend>>>,
 ) -> Redirect {
     let mut bg = backend.lock().unwrap();
-    let mut table = bg.handle.table("questions").unwrap().into_sync();
+    let mut table = bg.handle.table("questions").await.unwrap();
     table
         .insert(vec![
             (num as u64).into(),
             (data.q_id as u64).into(),
             data.q_prompt.to_string().into(),
-        ])
-        .expect("failed to insert question!");
-
+        ]);
     Redirect::to(format!("/admin/lec/{}", num))
 }

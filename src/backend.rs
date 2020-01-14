@@ -1,20 +1,20 @@
 use std::collections::BTreeMap;
 
 pub use noria::DataType;
-use noria::{SyncControllerHandle, SyncTable, SyncView, ZookeeperAuthority};
+use noria::{ControllerHandle, Table, View, ZookeeperAuthority};
 
 pub struct NoriaBackend {
-    pub handle: SyncControllerHandle<ZookeeperAuthority, tokio::runtime::TaskExecutor>,
+    pub handle: ControllerHandle<ZookeeperAuthority>,
     _rt: tokio::runtime::Runtime,
     _log: slog::Logger,
 
     _recipe: String,
-    pub tables: BTreeMap<String, SyncTable>,
-    pub views: BTreeMap<String, SyncView>,
+    pub tables: BTreeMap<String, Table>,
+    pub views: BTreeMap<String, View>,
 }
 
 impl NoriaBackend {
-    pub fn new(zk_addr: &str, log: Option<slog::Logger>) -> Result<Self, std::io::Error> {
+    pub async fn new(zk_addr: &str, log: Option<slog::Logger>) -> Result<Self, std::io::Error> {
         let log = match log {
             None => slog::Logger::root(slog::Discard, o!()),
             Some(l) => l,
@@ -30,24 +30,26 @@ impl NoriaBackend {
         debug!(log, "Connecting to Noria...");
         let rt = tokio::runtime::Runtime::new().unwrap();
         let executor = rt.executor();
-        let mut ch = SyncControllerHandle::new(zk_auth, executor)
-            .expect("failed to connect to Noria controller");
+        let mut ch = ControllerHandle::new(zk_auth).await.unwrap();
 
         debug!(log, "Installing recipe in Noria...");
-        ch.install_recipe(&recipe.to_owned()).unwrap();
+        ch.install_recipe(&recipe.to_owned()).await.unwrap();
+        let init_inputs = ch
+            .inputs().await.unwrap()
+            .into_iter();
+        let mut inputs = BTreeMap::new();
+        for (n, _) in init_inputs {
+          inputs.insert(n.clone(), ch.table(&n).await.unwrap());
+        };
 
-        let inputs = ch
-            .inputs()
-            .expect("couldn't get inputs from Noria")
-            .into_iter()
-            .map(|(n, _)| (n.clone(), ch.table(&n).unwrap().into_sync()))
-            .collect::<BTreeMap<String, SyncTable>>();
-        let outputs = ch
-            .outputs()
-            .expect("couldn't get outputs from Noria")
-            .into_iter()
-            .map(|(n, _)| (n.clone(), ch.view(&n).unwrap().into_sync()))
-            .collect::<BTreeMap<String, SyncView>>();
+        let init_outputs = ch
+            .outputs().await.unwrap()
+            .into_iter();
+
+        let mut outputs = BTreeMap::new();
+        for (n, _) in init_outputs {
+          outputs.insert(n.clone(), ch.view(&n).await.unwrap());
+        };
 
         Ok(NoriaBackend {
             handle: ch,

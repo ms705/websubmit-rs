@@ -1,4 +1,4 @@
-#![feature(proc_macro_hygiene, decl_macro)]
+#![feature(proc_macro_hygiene, decl_macro, async_closure, async_await)]
 
 extern crate clap;
 extern crate crypto;
@@ -36,11 +36,11 @@ pub fn new_logger() -> slog::Logger {
 }
 
 #[get("/")]
-fn index(cookies: Cookies, backend: State<Arc<Mutex<NoriaBackend>>>) -> Redirect {
+async fn index(cookies: Cookies<'_>, backend: State<'_, Arc<Mutex<NoriaBackend>>>) -> Redirect {
     if let Some(cookie) = cookies.get("apikey") {
         let apikey: String = cookie.value().parse().ok().unwrap();
         // TODO validate API key
-        match apikey::check_api_key(&*backend, &apikey) {
+        match apikey::check_api_key(&*backend, &apikey).await {
             Ok(_user) => Redirect::to("/leclist"),
             Err(_) => Redirect::to("/login"),
         }
@@ -61,7 +61,6 @@ fn main() {
             &format!("127.0.0.1:2181/{}", args.class),
             Some(new_logger()),
         )
-        .unwrap(),
     ));
 
     let config = args.config;
