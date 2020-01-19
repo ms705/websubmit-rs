@@ -94,6 +94,7 @@ fn main() {
             "/admin/lec/add",
             routes![admin::lec_add, admin::lec_add_submit],
         )
+        .mount("/admin/users", routes![admin::get_registered_users])
         .mount("/admin/lec", routes![admin::lec, admin::lec_submit])
         .launch();
 }

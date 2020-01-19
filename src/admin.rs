@@ -47,6 +47,20 @@ pub(crate) struct AdminLecAdd {
     lec_label: String,
 }
 
+#[derive(Debug, Serialize)]
+pub(crate) struct User {
+  email: String,
+  apikey: String,
+  is_admin: u8,
+}
+
+#[derive(Serialize)]
+struct UserContext {
+    users: Vec<User>,
+    parent: &'static str,
+}
+
+
 #[get("/")]
 pub(crate) fn lec_add(_adm: Admin) -> Template {
     let mut ctx = HashMap::new();
@@ -99,4 +113,33 @@ pub(crate) fn lec_submit(
         .expect("failed to insert question!");
 
     Redirect::to(format!("/admin/lec/{}", num))
+}
+
+#[get("/")]
+pub(crate) fn get_registered_users
+(_adm: Admin,
+  backend: State<Arc<Mutex<NoriaBackend>>>,
+  config: State<Config>) -> Template {
+  let mut bg = backend.lock().unwrap();
+  let mut h = bg.handle.view("all_users").unwrap().into_sync();
+
+  // 0 is a bogokey
+  let res = h
+        .lookup(&[(0 as u64).into()], true)
+        .expect("lecture list lookup failed");
+
+  let users: Vec<_> = res
+    .into_iter()
+    .map(|r| User {
+      email: r[0].clone().into(),
+      apikey: r[2].clone().into(),
+      is_admin: if config.staff.contains(&r[0].clone().into()) {1} else {0}, // r[1].clone().into(), this type conversion does not work
+    })
+    .collect();
+
+    let ctx = UserContext {
+        users: users,
+        parent: "layout",
+    };
+    Template::render("admin/users", &ctx)
 }

@@ -12,3 +12,4 @@ QUERY qs_by_lec: SELECT * FROM questions WHERE lec = ?;
 QUERY answers_by_lec: SELECT * FROM answers WHERE lec = ?;
 QUERY users_by_apikey: SELECT * FROM users WHERE apikey = ?;
 QUERY my_answers_for_lec: SELECT answers.* FROM answers WHERE answers.lec = ? AND answers.`user` = ?;
+QUERY all_users: SELECT email, is_admin, apikey FROM users;
