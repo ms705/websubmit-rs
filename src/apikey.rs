@@ -13,6 +13,7 @@ use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use async_trait::async_trait;
 
 /// (username, apikey)
 pub(crate) struct ApiKey {
@@ -37,28 +38,29 @@ pub(crate) enum ApiKeyError {
     BackendFailure(noria::error::ViewError),
 }
 
+#[async_trait]
 impl<'a, 'r> FromRequest<'a, 'r> for ApiKey {
     type Error = ApiKeyError;
-
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<ApiKey, Self::Error> {
+    async fn from_request(request: &'a Request<'r>) -> request::Outcome<ApiKey, Self::Error> {
         let be = request.guard::<State<Arc<Mutex<NoriaBackend>>>>().unwrap();
-        request
+        let key: String = request
             .cookies()
             .get("apikey")
-            .and_then(|cookie| cookie.value().parse().ok())
-            .and_then(|key: String| match check_api_key(&be, &key) {
+            .and_then(|cookie| cookie.value().parse().ok()).unwrap();
+
+        match check_api_key(&be, &key).await {
                 Ok(user) => Some(ApiKey { user, key }),
                 Err(_) => None,
-            })
-            .into_outcome((Status::Unauthorized, ApiKeyError::Missing))
+        }
+        .into_outcome((Status::Unauthorized, ApiKeyError::Missing))
     }
 }
 
 #[post("/", data = "<data>")]
-pub(crate) fn generate(
+pub(crate) async fn generate(
     data: Form<ApiKeyRequest>,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
-    config: State<Config>,
+    backend: State<'_,Arc<Mutex<NoriaBackend>>>,
+    config: State<'_,Config>,
 ) -> Template {
     // generate an API key from email address
     let mut hasher = Sha256::new();
@@ -75,14 +77,13 @@ pub(crate) fn generate(
 
     // insert into Noria if not exists
     let mut bg = backend.lock().unwrap();
-    let mut table = bg.handle.table("users").unwrap().into_sync();
+    let mut table = bg.handle.table("users").await.unwrap();
     table
         .insert(vec![
             data.email.as_str().into(),
             hash.as_str().into(),
             is_admin,
-        ])
-        .expect("failed to insert user!");
+        ]);
 
     if config.send_emails {
         email::send(
@@ -101,13 +102,13 @@ pub(crate) fn generate(
     Template::render("apikey/generate", &ctx)
 }
 
-pub(crate) fn check_api_key(
+pub(crate) async fn check_api_key(
     backend: &Arc<Mutex<NoriaBackend>>,
     key: &str,
 ) -> Result<String, ApiKeyError> {
     let mut bg = backend.lock().unwrap();
-    let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
-    match v.lookup(&[key.into()], true) {
+    let mut v = bg.handle.view("users_by_apikey").await.unwrap();
+    match v.lookup(&[key.into()], true).await {
         Ok(rs) => {
             if rs.len() < 1 {
                 Err(ApiKeyError::Missing)
@@ -123,13 +124,13 @@ pub(crate) fn check_api_key(
 }
 
 #[post("/", data = "<data>")]
-pub(crate) fn check(
+pub(crate) async fn check(
     data: Form<ApiKeySubmit>,
-    mut cookies: Cookies,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
+    mut cookies: Cookies<'_>,
+    backend: State<'_, Arc<Mutex<NoriaBackend>>>,
 ) -> Redirect {
     // check that the API key exists and set cookie
-    let res = check_api_key(&*backend, &data.key);
+    let res = check_api_key(&*backend, &data.key).await;
     match res {
         Err(ApiKeyError::BackendFailure(ref err)) => {
             eprintln!("Problem communicating with Noria: {:?}", err);
