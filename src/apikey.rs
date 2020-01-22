@@ -43,15 +43,16 @@ impl<'a, 'r> FromRequest<'a, 'r> for ApiKey {
     type Error = ApiKeyError;
     async fn from_request(request: &'a Request<'r>) -> request::Outcome<ApiKey, Self::Error> {
         let be = request.guard::<State<Arc<Mutex<NoriaBackend>>>>().unwrap();
-        request
+        let key: String = request
             .cookies()
             .get("apikey")
-            .and_then(|cookie| cookie.value().parse().ok())
-            .and_then(async move |key: String| match check_api_key(&be, &key).await {
+            .and_then(|cookie| cookie.value().parse().ok()).unwrap();
+
+        match check_api_key(&be, &key).await {
                 Ok(user) => Some(ApiKey { user, key }),
                 Err(_) => None,
-            })
-            .into_outcome((Status::Unauthorized, ApiKeyError::Missing))
+        }
+        .into_outcome((Status::Unauthorized, ApiKeyError::Missing))
     }
 }
 
