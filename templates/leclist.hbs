@@ -14,7 +14,15 @@
 
   {{#if ../admin}}
   <hr />
-  Admin: <a href="/admin/lec/add">add lecture</a>
+  Admin:
+  <ul>
+    <li>
+      <a href="/admin/lec/add">add lecture</a>
+    </li>
+    <li>
+      <a href="admin/users">see users</a>
+    </li>
+  </ul>
   {{/if}}
 {{/inline}}
 {{~> (parent)~}}
