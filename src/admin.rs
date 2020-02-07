@@ -122,16 +122,12 @@ pub(crate) fn get_registered_users
   config: State<Config>) -> Template {
   let mut bg = backend.lock().unwrap();
   let mut h = bg.handle.view("all_users").unwrap().into_sync();
-
-  println!("these are view's cols{:?}", h.columns());
   // 0 is a bogokey
-  let res = h
+  let users_table = h
         .lookup(&[(0 as u64).into()], true)
         .expect("user list lookup failed");
-  println!("result from looking up: {:?}", res);
-
   // vec of apis
-  let apis: Vec<String> = res.clone()
+  let apis: Vec<String> = users_table.clone()
   .into_iter()
   .map(|r| r[0].clone().into() )
   .collect();

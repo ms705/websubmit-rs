@@ -87,9 +87,11 @@ pub(crate) fn generate(
     // Create user info table
     // let sql = &format!{"CREATE TABLE answers_by_{} (lec int, q  int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));", hash.as_str()};
     // let sql = "CREATE TABLE answers_by_user1 (lec int, q  int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));";
-    let sql = format!("CREATE TABLE userinfo_{} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
-      CREATE TABLE answers_{} (lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (lec, q));\
-      QUERY userinfo_from{}: SELECT email, is_admin, apikey FROM userinfo_{}", hash.as_str(), hash.as_str(), hash.as_str(), hash.as_str());
+    let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
+      CREATE TABLE answers_{0} (lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (lec, q));\
+      QUERY userinfo_from{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
+      QUERY answers_by_lec_from{0}: SELECT * FROM answers_{0} WHERE lec = ?;",
+      hash.as_str());
 
     bg.handle.extend_recipe(sql).unwrap();
 

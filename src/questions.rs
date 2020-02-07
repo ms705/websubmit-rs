@@ -119,24 +119,46 @@ pub(crate) fn answers(
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
-    let mut h = bg.handle.view("answers_by_lec").unwrap().into_sync();
 
+    let mut h = bg.handle.view("all_users").unwrap().into_sync();
+    // 0 is a bogokey
+    let users_table = h
+        .lookup(&[(0 as u64).into()], true)
+        .expect("user list lookup failed");
+
+    // vec of apis
+    let answer_keys: Vec<String> = users_table.clone()
+    .into_iter()
+    .map(|r| r[1].clone().into() )
+    .collect();
+
+
+  let mut answers: Vec<_> = Vec::new();
+
+  for api in answer_keys.iter() {
+
+    let mut personal_answers = bg.handle.view(format!("answers_by_lec_from{}", api)).unwrap().into_sync();
     let key: DataType = (num as u64).into();
-
-    let res = h.lookup(&[key], true).expect("failed to look up answers!");
-    let answers: Vec<_> = res
-        .into_iter()
-        .map(|r| LectureAnswer {
-            id: r[2].clone().into(),
-            user: r[0].clone().into(),
-            answer: r[3].clone().into(),
-            time: if let DataType::Timestamp(ts) = r[4] {
+    let result = personal_answers.lookup(&[key], true).expect("failed to look up answers!");
+    println!("result: {:?}", result);
+    let user_answers: Vec<_> = result
+    .into_iter()
+    .map(|r| LectureAnswer {
+            id: r[1].clone().into(),
+            user: api.to_string(),
+            answer: r[2].clone().into(),
+            time: if let DataType::Timestamp(ts) = r[3] {
                 Some(ts)
             } else {
                 None
             },
         })
         .collect();
+
+    for answer in user_answers {
+      answers.push(answer);
+    }
+  }
 
     let ctx = LectureAnswersContext {
         lec_id: num,
@@ -157,16 +179,18 @@ pub(crate) fn questions(
     let mut bg = backend.lock().unwrap();
     let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
     let key: DataType = (num as u64).into();
-
-    let mut ah = bg.handle.view("my_answers_for_lec").unwrap().into_sync();
+    // gets the rows from the answers table with the correct lec number
+    let mut ah = bg.handle.view(format!("answers_by_lec_from{}", apikey.key)).unwrap().into_sync();
     let answers_res = ah
-        .lookup(&[(num as u64).into(), apikey.user.clone().into()], true)
+        .lookup(&[(num as u64).into()], true)
         .expect("lecture questions lookup failed");
     let mut answers = HashMap::new();
 
+
     for r in answers_res {
-        let id: u64 = r[2].clone().into();
-        let atext: String = r[3].clone().into();
+        println!("printing {:?}", r);
+        let id: u64 = r[1].clone().into(); //r[2].clone().into();
+        let atext: String = r[2].clone().into();
         answers.insert(id, atext);
     }
 
@@ -236,7 +260,7 @@ pub(crate) fn questions_submit(
     let num: DataType = (num as u64).into();
     let ts: DataType = DataType::Timestamp(Local::now().naive_local());
 
-    let tn = format!("answers_by_{}", apikey.key.as_str());
+    let tn = format!("answers_{}", apikey.key.as_str());
     let mut table = bg.handle.table(tn).unwrap().into_sync();
 
     for (id, answer) in &data.answers {
