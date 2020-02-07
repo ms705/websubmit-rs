@@ -78,11 +78,31 @@ pub(crate) fn generate(
     let mut table = bg.handle.table("users").unwrap().into_sync();
     table
         .insert(vec![
-            data.email.as_str().into(),
-            hash.as_str().into(),
-            is_admin,
-        ])
+          hash.as_str().into(),
+          hash.as_str().into(),
+          hash.as_str().into(),
+            ])
         .expect("failed to insert user!");
+
+    // Create user info table
+    // let sql = &format!{"CREATE TABLE answers_by_{} (lec int, q  int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));", hash.as_str()};
+    // let sql = "CREATE TABLE answers_by_user1 (lec int, q  int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));";
+    let sql = format!("CREATE TABLE userinfo_{} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
+      CREATE TABLE answers_{} (lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (lec, q));\
+      QUERY userinfo_from{}: SELECT email, is_admin, apikey FROM userinfo_{}", hash.as_str(), hash.as_str(), hash.as_str(), hash.as_str());
+
+    bg.handle.extend_recipe(sql).unwrap();
+
+    let mut userinfo_table = bg.handle.table(format!("userinfo_{}", hash.as_str())).unwrap().into_sync();
+
+    userinfo_table.insert(vec![
+      data.email.as_str().into(),
+      hash.as_str().into(),
+      is_admin,
+      ])
+    .expect("failed to insert userinfo");
+
+    println!("Cols of userinfo table {:?}", userinfo_table.columns());
 
     if config.send_emails {
         email::send(
@@ -107,6 +127,7 @@ pub(crate) fn check_api_key(
 ) -> Result<String, ApiKeyError> {
     let mut bg = backend.lock().unwrap();
     let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
+
     match v.lookup(&[key.into()], true) {
         Ok(rs) => {
             if rs.len() < 1 {
@@ -151,3 +172,15 @@ pub(crate) fn check(
         Redirect::to("/leclist")
     }
 }
+
+// pub(crate) fn create_user_shard(
+//   backend: &State<'_, Arc<Mutex<NoriaBackend>>>,
+//   apikey: &str) {
+//   let sql = format!{"CREATE TABLE answers_by_{} (lec int, q  int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));", apikey}.to_string();
+
+//   backend.handle.extend_recipe(&sql).unwrap();
+
+//   let g = backend.handle.graphviz().unwrap();
+//   println!("{}", g);
+
+// }

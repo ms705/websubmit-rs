@@ -123,19 +123,50 @@ pub(crate) fn get_registered_users
   let mut bg = backend.lock().unwrap();
   let mut h = bg.handle.view("all_users").unwrap().into_sync();
 
+  println!("these are view's cols{:?}", h.columns());
   // 0 is a bogokey
   let res = h
         .lookup(&[(0 as u64).into()], true)
-        .expect("lecture list lookup failed");
+        .expect("user list lookup failed");
+  println!("result from looking up: {:?}", res);
 
-  let users: Vec<_> = res
+  // vec of apis
+  let apis: Vec<String> = res.clone()
+  .into_iter()
+  .map(|r| r[0].clone().into() )
+  .collect();
+
+  let mut users: Vec<_> = Vec::new();
+
+  for api in apis.iter() {
+    let mut personal_view = bg.handle.view(format!("userinfo_from{}", api)).unwrap().into_sync();
+    println!("personal view columns{:?}", personal_view.columns());
+    let result = personal_view.lookup(&[0.into()], true).expect("failed to look up the user in a personal table");
+
+
+    let curr_users: Vec<_> = result
     .into_iter()
     .map(|r| User {
       email: r[0].clone().into(),
       apikey: r[2].clone().into(),
-      is_admin: if config.staff.contains(&r[0].clone().into()) {1} else {0}, // r[1].clone().into(), this type conversion does not work
+      is_admin: if config.staff.contains(&r[0].clone().into()) {1} else {0},
     })
     .collect();
+
+    for user in curr_users {
+      users.push(user);
+    }
+  }
+
+    // let api_str: &str = &*api;
+    // println!("str:{} ", api_str);
+    // let res: Vec<_> = personal_view.lookup(&[0.into()], true).expect("failed to look up the user in a personal table");
+
+    // users.push(User {
+    //   email: res[0].clone().into(),//res[0].clone().into().to_string(),
+    //   apikey: res[2].clone().into().to_string(),
+    //   is_admin: if config.staff.contains(res[0].clone().into()) {1} else {0},
+    // })
 
     let ctx = UserContext {
         users: users,

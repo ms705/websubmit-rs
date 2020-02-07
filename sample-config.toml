@@ -1,7 +1,7 @@
 # short class ID (human readable)
 class = "CSCI 2390"
 # list of staff email addresses (these users' API keys get admin access)
-staff = ["ekiziv@brown.edu"]
+staff = ["0ab1f0f6afc524bb5a36641978aa7d37e017d63e6387cef3324bb57d48154c39"]
 # custom template directory
 template_dir = "/path/to/templates"
 # custom resource directory (e.g., for images, CSS, JS)

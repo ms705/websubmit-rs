@@ -75,6 +75,9 @@ pub(crate) fn leclist(
 
     let user = apikey.user.clone();
     let admin = config.staff.contains(&user);
+    println!("admin is {}",admin);
+    println!("staff is {:?}",config.staff);
+    println!("user is {:?}", user);
 
     let res = h
         .lookup(&[(0 as u64).into()], true)
@@ -95,7 +98,7 @@ pub(crate) fn leclist(
         .map(|r| LectureListEntry {
             id: r[0].clone().into(),
             label: r[1].clone().into(),
-            num_qs: r[2].clone().into(),
+            num_qs: 0 /* r[2].clone().into() */,
             num_answered: /*r[4].clone().into()*/ 0u64,
         })
         .collect();
@@ -233,11 +236,12 @@ pub(crate) fn questions_submit(
     let num: DataType = (num as u64).into();
     let ts: DataType = DataType::Timestamp(Local::now().naive_local());
 
-    let mut table = bg.handle.table("answers").unwrap().into_sync();
+    let tn = format!("answers_by_{}", apikey.key.as_str());
+    let mut table = bg.handle.table(tn).unwrap().into_sync();
 
     for (id, answer) in &data.answers {
         let rec: Vec<DataType> = vec![
-            apikey.user.clone().into(),
+            // apikey.user.clone().into(),
             num.clone(),
             (*id).into(),
             answer.clone().into(),
