@@ -54,7 +54,7 @@ struct LectureListEntry {
     id: u64,
     label: String,
     num_qs: u64,
-    num_answered: i64,
+    num_answered: u64,
 }
 
 #[derive(Serialize)]
@@ -95,7 +95,7 @@ pub(crate) fn leclist(
             id: r[0].clone().into(),
             label: r[1].clone().into(),
             num_qs: r[2].clone().into(),
-            num_answered: r[4].clone().into(),
+            num_answered: /*r[4].clone().into()*/ 0u64,
         })
         .collect();
 
