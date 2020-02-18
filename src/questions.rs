@@ -54,7 +54,7 @@ struct LectureListEntry {
     id: u64,
     label: String,
     num_qs: u64,
-    num_answered: u64,
+    num_answered: i64,
 }
 
 #[derive(Serialize)]
@@ -72,12 +72,8 @@ pub(crate) fn leclist(
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("leclist").unwrap().into_sync();
-
     let user = apikey.user.clone();
     let admin = config.staff.contains(&user);
-    println!("admin is {}",admin);
-    println!("staff is {:?}",config.staff);
-    println!("user is {:?}", user);
 
     let res = h
         .lookup(&[(0 as u64).into()], true)
@@ -98,8 +94,8 @@ pub(crate) fn leclist(
         .map(|r| LectureListEntry {
             id: r[0].clone().into(),
             label: r[1].clone().into(),
-            num_qs: 0 /* r[2].clone().into() */,
-            num_answered: /*r[4].clone().into()*/ 0u64,
+            num_qs: r[2].clone().into(),
+            num_answered: r[4].clone().into(),
         })
         .collect();
 
@@ -140,7 +136,6 @@ pub(crate) fn answers(
     let mut personal_answers = bg.handle.view(format!("answers_by_lec_from{}", api)).unwrap().into_sync();
     let key: DataType = (num as u64).into();
     let result = personal_answers.lookup(&[key], true).expect("failed to look up answers!");
-    println!("result: {:?}", result);
     let user_answers: Vec<_> = result
     .into_iter()
     .map(|r| LectureAnswer {
@@ -188,7 +183,6 @@ pub(crate) fn questions(
 
 
     for r in answers_res {
-        println!("printing {:?}", r);
         let id: u64 = r[1].clone().into(); //r[2].clone().into();
         let atext: String = r[2].clone().into();
         answers.insert(id, atext);

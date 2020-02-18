@@ -136,7 +136,6 @@ pub(crate) fn get_registered_users
 
   for api in apis.iter() {
     let mut personal_view = bg.handle.view(format!("userinfo_from{}", api)).unwrap().into_sync();
-    println!("personal view columns{:?}", personal_view.columns());
     let result = personal_view.lookup(&[0.into()], true).expect("failed to look up the user in a personal table");
 
 
@@ -153,16 +152,6 @@ pub(crate) fn get_registered_users
       users.push(user);
     }
   }
-
-    // let api_str: &str = &*api;
-    // println!("str:{} ", api_str);
-    // let res: Vec<_> = personal_view.lookup(&[0.into()], true).expect("failed to look up the user in a personal table");
-
-    // users.push(User {
-    //   email: res[0].clone().into(),//res[0].clone().into().to_string(),
-    //   apikey: res[2].clone().into().to_string(),
-    //   is_admin: if config.staff.contains(res[0].clone().into()) {1} else {0},
-    // })
 
     let ctx = UserContext {
         users: users,

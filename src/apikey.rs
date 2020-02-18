@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 /// (username, apikey)
+#[derive(Debug)]
 pub(crate) struct ApiKey {
     pub user: String,
     pub key: String,
@@ -104,8 +105,6 @@ pub(crate) fn generate(
       ])
     .expect("failed to insert userinfo");
 
-    println!("Cols of userinfo table {:?}", userinfo_table.columns());
-
     if config.send_emails {
         email::send(
             "no-reply@csci2390-submit.cs.brown.edu".into(),
@@ -174,15 +173,3 @@ pub(crate) fn check(
         Redirect::to("/leclist")
     }
 }
-
-// pub(crate) fn create_user_shard(
-//   backend: &State<'_, Arc<Mutex<NoriaBackend>>>,
-//   apikey: &str) {
-//   let sql = format!{"CREATE TABLE answers_by_{} (lec int, q  int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));", apikey}.to_string();
-
-//   backend.handle.extend_recipe(&sql).unwrap();
-
-//   let g = backend.handle.graphviz().unwrap();
-//   println!("{}", g);
-
-// }
