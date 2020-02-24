@@ -1,4 +1,4 @@
-CREATE TABLE users (apikey text, infokey text, answerkey text, PRIMARY KEY(apikey));
+CREATE TABLE users (email_key varchar(255), apikey text,  PRIMARY KEY(email_key));
 CREATE TABLE lectures (id int, label varchar(255), PRIMARY KEY (id));
 CREATE TABLE questions (lec int, q int, question text, PRIMARY KEY (lec, q));
 
@@ -7,7 +7,7 @@ QUERY leclist: SELECT lectures.id, lectures.label, lec_qcount.qcount FROM lectur
 QUERY lecture: SELECT * FROM lectures WHERE id = ?;
 QUERY qs_by_lec: SELECT * FROM questions WHERE lec = ?;
 QUERY users_by_apikey: SELECT * FROM users WHERE apikey = ?;
-QUERY all_users: SELECT apikey, infokey FROM users;
+QUERY all_users: SELECT apikey, email_key FROM users;
 
 
 --CREATE TABLE users (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));
@@ -16,4 +16,3 @@ QUERY all_users: SELECT apikey, infokey FROM users;
 --QUERY leclist: SELECT lectures.id, lectures.label, submitted.`user`, lec_qcount.qcount, submitted.num_answered FROM lectures LEFT JOIN lec_qcount ON (lectures.id = lec_qcount.lec) LEFT JOIN submitted ON (lectures.id = submitted.lec) WHERE submitted.`user` = ?;
 -- QUERY answers_by_lec: SELECT * FROM answers WHERE lec = ?;
 --QUERY my_answers_for_lec: SELECT answers.* FROM answers WHERE answers.lec = ? AND answers.`user` = ?;
-

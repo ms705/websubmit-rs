@@ -126,16 +126,15 @@ pub(crate) fn get_registered_users
   let users_table = h
         .lookup(&[(0 as u64).into()], true)
         .expect("user list lookup failed");
-  // vec of apis
-  let apis: Vec<String> = users_table.clone()
+  let email_keys: Vec<String> = users_table.clone()
   .into_iter()
-  .map(|r| r[0].clone().into() )
+  .map(|r| r[1].clone().into() )
   .collect();
 
   let mut users: Vec<_> = Vec::new();
 
-  for api in apis.iter() {
-    let mut personal_view = bg.handle.view(format!("userinfo_from{}", api)).unwrap().into_sync();
+  for email in email_keys.iter() {
+    let mut personal_view = bg.handle.view(format!("userinfo_from{}", email)).unwrap().into_sync();
     let result = personal_view.lookup(&[0.into()], true).expect("failed to look up the user in a personal table");
 
 
@@ -144,7 +143,7 @@ pub(crate) fn get_registered_users
     .map(|r| User {
       email: r[0].clone().into(),
       apikey: r[2].clone().into(),
-      is_admin: if config.staff.contains(&r[0].clone().into()) {1} else {0},
+      is_admin: if config.staff.contains(&email) {1} else {0},
     })
     .collect();
 

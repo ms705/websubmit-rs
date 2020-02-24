@@ -74,29 +74,28 @@ pub(crate) fn generate(
         0.into()
     };
 
+    let email_digest = &data.email.clone().split('@').take(1).collect::<Vec<_>>()[0].to_string();
+    println!("{}", email_digest);
     // insert into Noria if not exists
     let mut bg = backend.lock().unwrap();
     let mut table = bg.handle.table("users").unwrap().into_sync();
     table
         .insert(vec![
+          email_digest.clone().into(),
           hash.as_str().into(),
-          hash.as_str().into(),
-          hash.as_str().into(),
-            ])
+        ])
         .expect("failed to insert user!");
 
     // Create user info table
-    // let sql = &format!{"CREATE TABLE answers_by_{} (lec int, q  int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));", hash.as_str()};
-    // let sql = "CREATE TABLE answers_by_user1 (lec int, q  int, answer text, submitted_at datetime, PRIMARY KEY (user, lec, q));";
     let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
       CREATE TABLE answers_{0} (lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (lec, q));\
       QUERY userinfo_from{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
       QUERY answers_by_lec_from{0}: SELECT * FROM answers_{0} WHERE lec = ?;",
-      hash.as_str());
+      email_digest.clone());
 
     bg.handle.extend_recipe(sql).unwrap();
 
-    let mut userinfo_table = bg.handle.table(format!("userinfo_{}", hash.as_str())).unwrap().into_sync();
+    let mut userinfo_table = bg.handle.table(format!("userinfo_{}", email_digest)).unwrap().into_sync();
 
     userinfo_table.insert(vec![
       data.email.as_str().into(),
