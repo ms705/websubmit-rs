@@ -117,6 +117,7 @@ pub(crate) fn answers(
     let mut bg = backend.lock().unwrap();
 
     let mut h = bg.handle.view("all_users").unwrap().into_sync();
+    println!("{:?}", h.columns());
     // 0 is a bogokey
     let users_table = h
         .lookup(&[(0 as u64).into()], true)
@@ -174,8 +175,11 @@ pub(crate) fn questions(
     let mut bg = backend.lock().unwrap();
     let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
     let key: DataType = (num as u64).into();
-    // gets the rows from the answers table with the correct lec number
-    let mut ah = bg.handle.view(format!("answers_by_lec_from{}", apikey.key)).unwrap().into_sync();
+
+    // First fetch the apikey
+    let e = get_email_from_apikey(&mut bg, apikey.key);
+
+    let mut ah = bg.handle.view(format!("answers_by_lec_from{}", e)).unwrap().into_sync();
     let answers_res = ah
         .lookup(&[(num as u64).into()], true)
         .expect("lecture questions lookup failed");
@@ -254,7 +258,8 @@ pub(crate) fn questions_submit(
     let num: DataType = (num as u64).into();
     let ts: DataType = DataType::Timestamp(Local::now().naive_local());
 
-    let tn = format!("answers_{}", apikey.key.as_str());
+    let email_digest = get_email_from_apikey(&mut bg, apikey.key.clone());
+    let tn = format!("answers_{}", email_digest);
     let mut table = bg.handle.table(tn).unwrap().into_sync();
 
     for (id, answer) in &data.answers {
@@ -286,4 +291,12 @@ pub(crate) fn questions_submit(
     }
 
     Redirect::to("/leclist")
+}
+
+pub(crate) fn get_email_from_apikey(bg: &mut std::sync::MutexGuard<'_, NoriaBackend>, apikey: String) -> String {
+  let mut email_from_apikey = bg.handle.view("users_by_apikey").unwrap().into_sync();
+  let email= email_from_apikey.lookup(&[apikey.into()], true).expect("email lookup failed");
+    let e: String = email[0][0].clone().into();
+    println!("{:?}", e);
+    return e
 }

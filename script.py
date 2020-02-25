@@ -64,12 +64,13 @@ if __name__ == '__main__':
   faker = Faker()
 
   generate_user(session, 'ekiziv@brown.edu')
+  # response = session.get(f'http://localhost:8000/admin/users')
   lec_id = "0"
   add_lecture_and_question(session, lec_id, faker.word())
 
 
   #generate 10 random users and each of them with an answer
-  for i in range (5):
+  for i in range (1):
     response = session.get('http://localhost:8000/login')
     email = faker.email()
     generate_user(session, email)

@@ -1,4 +1,4 @@
-CREATE TABLE users (email_key varchar(255), apikey text,  PRIMARY KEY(email_key));
+CREATE TABLE users (email_key varchar(255), apikey text,  PRIMARY KEY(apikey));
 CREATE TABLE lectures (id int, label varchar(255), PRIMARY KEY (id));
 CREATE TABLE questions (lec int, q int, question text, PRIMARY KEY (lec, q));
 
@@ -8,6 +8,7 @@ QUERY lecture: SELECT * FROM lectures WHERE id = ?;
 QUERY qs_by_lec: SELECT * FROM questions WHERE lec = ?;
 QUERY users_by_apikey: SELECT * FROM users WHERE apikey = ?;
 QUERY all_users: SELECT apikey, email_key FROM users;
+
 
 
 --CREATE TABLE users (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));
