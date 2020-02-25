@@ -134,7 +134,7 @@ pub(crate) fn get_registered_users
   let mut users: Vec<_> = Vec::new();
 
   for email in email_keys.iter() {
-    let mut personal_view = bg.handle.view(format!("userinfo_from{}", email)).unwrap().into_sync();
+    let mut personal_view = bg.handle.view(format!("userinfo_from_{}", email)).unwrap().into_sync();
     let result = personal_view.lookup(&[0.into()], true).expect("failed to look up the user in a personal table");
 
 

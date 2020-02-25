@@ -69,40 +69,13 @@ pub(crate) fn generate(
     let hash = hasher.result_str();
 
     let is_admin = if config.staff.contains(&data.email) {
-        1.into()
+        1
     } else {
-        0.into()
+        0
     };
 
-    let email_digest = &data.email.clone().split('@').take(1).collect::<Vec<_>>()[0].to_string();
-    println!("{}", email_digest);
-    // insert into Noria if not exists
     let mut bg = backend.lock().unwrap();
-    let mut table = bg.handle.table("users").unwrap().into_sync();
-    table
-        .insert(vec![
-          email_digest.clone().into(),
-          hash.as_str().into(),
-        ])
-        .expect("failed to insert user!");
-
-    // Create user info table
-    let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
-      CREATE TABLE answers_{0} (lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (lec, q));\
-      QUERY userinfo_from{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
-      QUERY answers_by_lec_from{0}: SELECT * FROM answers_{0} WHERE lec = ?;",
-      email_digest.clone());
-
-    bg.handle.extend_recipe(sql).unwrap();
-
-    let mut userinfo_table = bg.handle.table(format!("userinfo_{}", email_digest)).unwrap().into_sync();
-
-    userinfo_table.insert(vec![
-      data.email.as_str().into(),
-      hash.as_str().into(),
-      is_admin,
-      ])
-    .expect("failed to insert userinfo");
+    create_user_shard(&mut bg, data.email.clone(), hash.as_str(), is_admin);
 
     if config.send_emails {
         email::send(
@@ -171,4 +144,39 @@ pub(crate) fn check(
         cookies.add(cookie);
         Redirect::to("/leclist")
     }
+}
+
+pub(crate) fn create_user_shard(
+  bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
+  email: String,
+  hash: &str,
+  is_admin: u64) {
+  let email_digest = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
+    // insert into Noria if not exists
+
+    let mut table = bg.handle.table("users").unwrap().into_sync();
+    table
+        .insert(vec![
+          email_digest.clone().into(),
+          hash.into(),
+        ])
+        .expect("failed to insert user!");
+
+    // Create user info table
+    let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
+      CREATE TABLE answers_{0} (lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (lec, q));\
+      QUERY userinfo_from_{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
+      QUERY answers_by_lec_from_{0}: SELECT * FROM answers_{0} WHERE lec = ?;",
+      email_digest.clone());
+
+    bg.handle.extend_recipe(sql).unwrap();
+
+    let mut userinfo_table = bg.handle.table(format!("userinfo_{}", email_digest)).unwrap().into_sync();
+
+    userinfo_table.insert(vec![
+      email.into(),
+      hash.into(),
+      is_admin.into(),
+      ])
+    .expect("failed to insert userinfo");
 }

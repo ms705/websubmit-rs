@@ -117,7 +117,6 @@ pub(crate) fn answers(
     let mut bg = backend.lock().unwrap();
 
     let mut h = bg.handle.view("all_users").unwrap().into_sync();
-    println!("{:?}", h.columns());
     // 0 is a bogokey
     let users_table = h
         .lookup(&[(0 as u64).into()], true)
@@ -134,7 +133,7 @@ pub(crate) fn answers(
 
   for api in answer_keys.iter() {
 
-    let mut personal_answers = bg.handle.view(format!("answers_by_lec_from{}", api)).unwrap().into_sync();
+    let mut personal_answers = bg.handle.view(format!("answers_by_lec_from_{}", api)).unwrap().into_sync();
     let key: DataType = (num as u64).into();
     let result = personal_answers.lookup(&[key], true).expect("failed to look up answers!");
     let user_answers: Vec<_> = result
@@ -179,7 +178,7 @@ pub(crate) fn questions(
     // First fetch the apikey
     let e = get_email_from_apikey(&mut bg, apikey.key);
 
-    let mut ah = bg.handle.view(format!("answers_by_lec_from{}", e)).unwrap().into_sync();
+    let mut ah = bg.handle.view(format!("answers_by_lec_from_{}", e)).unwrap().into_sync();
     let answers_res = ah
         .lookup(&[(num as u64).into()], true)
         .expect("lecture questions lookup failed");
@@ -297,6 +296,5 @@ pub(crate) fn get_email_from_apikey(bg: &mut std::sync::MutexGuard<'_, NoriaBack
   let mut email_from_apikey = bg.handle.view("users_by_apikey").unwrap().into_sync();
   let email= email_from_apikey.lookup(&[apikey.into()], true).expect("email lookup failed");
     let e: String = email[0][0].clone().into();
-    println!("{:?}", e);
     return e
 }
