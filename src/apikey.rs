@@ -162,7 +162,7 @@ pub(crate) fn create_user_shard(
       let index_to_delete = query_map.get(&"answers_by_lec".to_string()).unwrap();
       println!("index:{:?}", index_to_delete);
       println!("query map {:?}", query_map);
-      bg.handle.remove_query("answers_by_lec").expect("failed to remove");
+  //    bg.handle.remove_query("answers_by_lec").expect("failed to remove");
     }
 
     let mut table = bg.handle.table("users").unwrap().into_sync();
