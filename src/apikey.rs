@@ -154,6 +154,17 @@ pub(crate) fn create_user_shard(
   let email_digest = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
     // insert into Noria if not exists
 
+    let current_users = get_users_email_keys(bg);
+    let answer_union = extend_union_string(&email_digest, current_users);
+    let query_map = bg.handle.outputs().unwrap();
+
+    if query_map.contains_key("answers_by_lec") {
+      let index_to_delete = query_map.get(&"answers_by_lec".to_string()).unwrap();
+      println!("index:{:?}", index_to_delete);
+      println!("query map {:?}", query_map);
+      bg.handle.remove_query("answers_by_lec").expect("failed to remove");
+    }
+
     let mut table = bg.handle.table("users").unwrap().into_sync();
     table
         .insert(vec![
@@ -162,12 +173,15 @@ pub(crate) fn create_user_shard(
         ])
         .expect("failed to insert user!");
 
+
+    println!("union : {:?}", answer_union);
+    println!("curr schema: {:?}", bg.handle.outputs().unwrap());
     // Create user info table
     let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
-      CREATE TABLE answers_{0} (lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (lec, q));\
+      CREATE TABLE answers_{0} (email_key varchar(255), lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (email_key));\
       QUERY userinfo_from_{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
-      QUERY answers_by_lec_from_{0}: SELECT * FROM answers_{0} WHERE lec = ?;",
-      email_digest.clone());
+      QUERY answers_by_lec: {1}",
+      email_digest.clone(), answer_union);
 
     bg.handle.extend_recipe(sql).unwrap();
 
@@ -179,4 +193,38 @@ pub(crate) fn create_user_shard(
       is_admin.into(),
       ])
     .expect("failed to insert userinfo");
+}
+
+pub(crate) fn get_users_email_keys(
+  bg: &mut std::sync::MutexGuard<'_, NoriaBackend>) -> Vec<String> {
+  let users_table = bg.handle.view("all_users").unwrap().into_sync()
+        .lookup(&[(0 as u64).into()], true)
+        .expect("user list lookup failed");
+  let email_keys: Vec<String> = users_table.clone()
+  .into_iter()
+  .map(|r| r[1].clone().into() )
+  .collect();
+  return email_keys;
+}
+
+
+pub(crate) fn extend_union_string(
+  new_user_email_digest: &String,
+  current_users: Vec<String> ) -> String {
+
+  let mut extend : Option<String> = None;
+  for user in current_users.into_iter() {
+    let next = format!("(SELECT * FROM answers_{} WHERE lec=?)", user);
+
+    match extend {
+      None => extend = Some(next),
+      Some(val) => extend = Some(format!("{} UNION {}", val, next)),
+    }
+  }
+
+  let new_user = format!("(SELECT * FROM answers_{} WHERE lec=?)", new_user_email_digest);
+  match extend {
+    None => { return format!("SELECT * FROM answers_{} WHERE lec=?;", new_user_email_digest) },
+    Some(extend) => { return format!("{} UNION {};", extend, new_user) },
+  }
 }

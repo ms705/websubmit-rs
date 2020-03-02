@@ -108,6 +108,7 @@ pub(crate) fn leclist(
     Template::render("leclist", &ctx)
 }
 
+// Aggregates the answers for a specific lecture?
 #[get("/<num>")]
 pub(crate) fn answers(
     _admin: Admin,
@@ -116,33 +117,19 @@ pub(crate) fn answers(
 ) -> Template {
     let mut bg = backend.lock().unwrap();
 
-    let mut h = bg.handle.view("all_users").unwrap().into_sync();
+    let mut h = bg.handle.view("answers_by_lec").unwrap().into_sync();
     // 0 is a bogokey
-    let users_table = h
-        .lookup(&[(0 as u64).into()], true)
+    let res = h
+        .lookup(&[(num as u64).into()], true)
         .expect("user list lookup failed");
-
-    // vec of apis
-    let answer_keys: Vec<String> = users_table.clone()
-    .into_iter()
-    .map(|r| r[1].clone().into() )
-    .collect();
-
-
-  let mut answers: Vec<_> = Vec::new();
-
-  for api in answer_keys.iter() {
-
-    let mut personal_answers = bg.handle.view(format!("answers_by_lec_from_{}", api)).unwrap().into_sync();
-    let key: DataType = (num as u64).into();
-    let result = personal_answers.lookup(&[key], true).expect("failed to look up answers!");
-    let user_answers: Vec<_> = result
+    println!("columns of answers by lec {:?}", h.columns());
+    let answers: Vec<_> = res
     .into_iter()
     .map(|r| LectureAnswer {
-            id: r[1].clone().into(),
-            user: api.to_string(),
-            answer: r[2].clone().into(),
-            time: if let DataType::Timestamp(ts) = r[3] {
+            id: r[2].clone().into(),
+            user: r[0].clone().into(),
+            answer: r[3].clone().into(),
+            time: if let DataType::Timestamp(ts) = r[4] {
                 Some(ts)
             } else {
                 None
@@ -150,10 +137,6 @@ pub(crate) fn answers(
         })
         .collect();
 
-    for answer in user_answers {
-      answers.push(answer);
-    }
-  }
 
     let ctx = LectureAnswersContext {
         lec_id: num,
@@ -175,10 +158,7 @@ pub(crate) fn questions(
     let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
     let key: DataType = (num as u64).into();
 
-    // First fetch the apikey
-    let e = get_email_from_apikey(&mut bg, apikey.key);
-
-    let mut ah = bg.handle.view(format!("answers_by_lec_from_{}", e)).unwrap().into_sync();
+    let mut ah = bg.handle.view("answers_by_lec").unwrap().into_sync();
     let answers_res = ah
         .lookup(&[(num as u64).into()], true)
         .expect("lecture questions lookup failed");
@@ -186,8 +166,8 @@ pub(crate) fn questions(
 
 
     for r in answers_res {
-        let id: u64 = r[1].clone().into(); //r[2].clone().into();
-        let atext: String = r[2].clone().into();
+        let id: u64 = r[2].clone().into(); //r[2].clone().into();
+        let atext: String = r[3].clone().into();
         answers.insert(id, atext);
     }
 
@@ -263,7 +243,7 @@ pub(crate) fn questions_submit(
 
     for (id, answer) in &data.answers {
         let rec: Vec<DataType> = vec![
-            // apikey.user.clone().into(),
+            email_digest.clone().into(),
             num.clone(),
             (*id).into(),
             answer.clone().into(),

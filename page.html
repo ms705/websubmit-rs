@@ -1,24 +1,27 @@
 <html>
   <body>
   
-    <h1>Lecture 0 answers:</h1>
+  <h1>Welcome to the CSCI 2390 submission system!</h1>
 
-    <table>
-      <tr>
-        <th>User</th>
-        <th>ID</th>
-        <th>Answer</th>
-        <th>Submission time</th>
-      </tr>
-      
-      <tr>
-        <td>mitchelldarren</td>
-        <td>0</td>
-        <td>Type remain child we add born long weight.</td>
-        <td>2020-02-24T21:10:56.147253</td>
-      </tr>
-      
-    </table>
+  <h5>Generate API key:</h5>
+  <form action="/apikey/generate" method="post" accept-charset="utf-8">
+    <label>Your email address:
+      <p>
+      <input name="email" />
+      </p>
+    </label>
+    <input type="submit" value="Submit">
+  </form>
+
+  <h5>Log in with API key</h5>
+  <form action="/apikey/check" method="post" accept-charset="utf-8">
+    <label>Your API key:
+      <p>
+      <input name="key" />
+      </p>
+    </label>
+    <input type="submit" value="Submit">
+  </form>
 
   <hr />
 <p><small>Powered by Noria</small></p>
