@@ -147,11 +147,12 @@ pub(crate) fn check(
 }
 
 pub(crate) fn create_user_shard(
-  bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
-  email: String,
-  hash: &str,
-  is_admin: u64) {
-  let email_digest = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
+    bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
+    email: String,
+    hash: &str,
+    is_admin: u64,
+) {
+    let email_digest = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
     // insert into Noria if not exists
 
     let current_users = get_users_email_keys(bg);
@@ -160,15 +161,13 @@ pub(crate) fn create_user_shard(
 
     let mut table = bg.handle.table("users").unwrap().into_sync();
     table
-        .insert(vec![
-          email_digest.clone().into(),
-          hash.into(),
-        ])
+        .insert(vec![email_digest.clone().into(), hash.into()])
         .expect("failed to insert user!");
 
-
     if query_map.contains_key("answers_by_lec") {
-      bg.handle.remove_query("answers_by_lec").expect("failed to remove");
+        bg.handle
+            .remove_query("answers_by_lec")
+            .expect("failed to remove");
     }
 
     // Create user info table
@@ -180,46 +179,60 @@ pub(crate) fn create_user_shard(
 
     bg.handle.extend_recipe(sql).unwrap();
 
-    let mut userinfo_table = bg.handle.table(format!("userinfo_{}", email_digest)).unwrap().into_sync();
+    let mut userinfo_table = bg
+        .handle
+        .table(format!("userinfo_{}", email_digest))
+        .unwrap()
+        .into_sync();
 
-    userinfo_table.insert(vec![
-      email.into(),
-      hash.into(),
-      is_admin.into(),
-      ])
-    .expect("failed to insert userinfo");
+    userinfo_table
+        .insert(vec![email.into(), hash.into(), is_admin.into()])
+        .expect("failed to insert userinfo");
 }
 
 pub(crate) fn get_users_email_keys(
-  bg: &mut std::sync::MutexGuard<'_, NoriaBackend>) -> Vec<String> {
-  let users_table = bg.handle.view("all_users").unwrap().into_sync()
+    bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
+) -> Vec<String> {
+    let users_table = bg
+        .handle
+        .view("all_users")
+        .unwrap()
+        .into_sync()
         .lookup(&[(0 as u64).into()], true)
         .expect("user list lookup failed");
-  let email_keys: Vec<String> = users_table.clone()
-  .into_iter()
-  .map(|r| r[1].clone().into() )
-  .collect();
-  return email_keys;
+    let email_keys: Vec<String> = users_table
+        .clone()
+        .into_iter()
+        .map(|r| r[1].clone().into())
+        .collect();
+    return email_keys;
 }
 
-
 pub(crate) fn extend_union_string(
-  new_user_email_digest: &String,
-  current_users: Vec<String> ) -> String {
+    new_user_email_digest: &String,
+    current_users: Vec<String>,
+) -> String {
+    let mut extend: Option<String> = None;
+    for user in current_users.into_iter() {
+        let next = format!("SELECT email_key FROM answers_{0} WHERE lec=?", user);
 
-  let mut extend : Option<String> = None;
-  for user in current_users.into_iter() {
-    let next = format!("SELECT email_key FROM answers_{0} WHERE lec=?", user);
-
-    match extend {
-      None => extend = Some(next),
-      Some(val) => extend = Some(format!("{} UNION {}", val, next)),
+        match extend {
+            None => extend = Some(next),
+            Some(val) => extend = Some(format!("{} UNION {}", val, next)),
+        }
     }
-  }
 
-  let new_user = format!("SELECT email_key FROM answers_{0} WHERE lec=?", new_user_email_digest);
-  match extend {
-    None => { return format!("SELECT email_key FROM answers_{0} WHERE lec=?;", new_user_email_digest) },
-    Some(extend) => { return format!("{} UNION {};", extend, new_user) },
-  }
+    let new_user = format!(
+        "SELECT email_key FROM answers_{0} WHERE lec=?",
+        new_user_email_digest
+    );
+    match extend {
+        None => {
+            return format!(
+                "SELECT email_key FROM answers_{0} WHERE lec=?;",
+                new_user_email_digest
+            )
+        }
+        Some(extend) => return format!("{} UNION {};", extend, new_user),
+    }
 }

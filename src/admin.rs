@@ -49,9 +49,9 @@ pub(crate) struct AdminLecAdd {
 
 #[derive(Debug, Serialize)]
 pub(crate) struct User {
-  email: String,
-  apikey: String,
-  is_admin: u8,
+    email: String,
+    apikey: String,
+    is_admin: u8,
 }
 
 #[derive(Serialize)]
@@ -59,7 +59,6 @@ struct UserContext {
     users: Vec<User>,
     parent: &'static str,
 }
-
 
 #[get("/")]
 pub(crate) fn lec_add(_adm: Admin) -> Template {
@@ -116,41 +115,48 @@ pub(crate) fn lec_submit(
 }
 
 #[get("/")]
-pub(crate) fn get_registered_users
-(_adm: Admin,
-  backend: State<Arc<Mutex<NoriaBackend>>>,
-  config: State<Config>) -> Template {
-  let mut bg = backend.lock().unwrap();
-  let mut h = bg.handle.view("all_users").unwrap().into_sync();
-  // 0 is a bogokey
-  let users_table = h
+pub(crate) fn get_registered_users(
+    _adm: Admin,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+    config: State<Config>,
+) -> Template {
+    let mut bg = backend.lock().unwrap();
+    let mut h = bg.handle.view("all_users").unwrap().into_sync();
+    // 0 is a bogokey
+    let users_table = h
         .lookup(&[(0 as u64).into()], true)
         .expect("user list lookup failed");
-  let email_keys: Vec<String> = users_table.clone()
-  .into_iter()
-  .map(|r| r[1].clone().into() )
-  .collect();
+    let email_keys: Vec<String> = users_table
+        .clone()
+        .into_iter()
+        .map(|r| r[1].clone().into())
+        .collect();
 
-  let mut users: Vec<_> = Vec::new();
+    let mut users: Vec<_> = Vec::new();
 
-  for email in email_keys.iter() {
-    let mut personal_view = bg.handle.view(format!("userinfo_from_{}", email)).unwrap().into_sync();
-    let result = personal_view.lookup(&[0.into()], true).expect("failed to look up the user in a personal table");
+    for email in email_keys.iter() {
+        let mut personal_view = bg
+            .handle
+            .view(format!("userinfo_from_{}", email))
+            .unwrap()
+            .into_sync();
+        let result = personal_view
+            .lookup(&[0.into()], true)
+            .expect("failed to look up the user in a personal table");
 
+        let curr_users: Vec<_> = result
+            .into_iter()
+            .map(|r| User {
+                email: r[0].clone().into(),
+                apikey: r[2].clone().into(),
+                is_admin: if config.staff.contains(&email) { 1 } else { 0 },
+            })
+            .collect();
 
-    let curr_users: Vec<_> = result
-    .into_iter()
-    .map(|r| User {
-      email: r[0].clone().into(),
-      apikey: r[2].clone().into(),
-      is_admin: if config.staff.contains(&email) {1} else {0},
-    })
-    .collect();
-
-    for user in curr_users {
-      users.push(user);
+        for user in curr_users {
+            users.push(user);
+        }
     }
-  }
 
     let ctx = UserContext {
         users: users,

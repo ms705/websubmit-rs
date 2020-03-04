@@ -15,9 +15,9 @@ extern crate serde_derive;
 mod admin;
 mod apikey;
 mod args;
-mod email;
 mod backend;
 mod config;
+mod email;
 mod login;
 mod questions;
 
