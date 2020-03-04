@@ -108,7 +108,6 @@ pub(crate) fn leclist(
     Template::render("leclist", &ctx)
 }
 
-// Aggregates the answers for a specific lecture?
 #[get("/<num>")]
 pub(crate) fn answers(
     _admin: Admin,
@@ -122,7 +121,6 @@ pub(crate) fn answers(
     let res = h
         .lookup(&[(num as u64).into()], true)
         .expect("user list lookup failed");
-    println!("columns of answers by lec {:?}", h.columns());
     let answers: Vec<_> = res
     .into_iter()
     .map(|r| LectureAnswer {

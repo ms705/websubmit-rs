@@ -63,12 +63,13 @@ if __name__ == '__main__':
   session = requests.session()
   faker = Faker()
 
-  generate_user(session, 'ekiziv@brown.edu')
-  generate_user(session, 'helloworld@brown.edu')
+  generate_user(session, 'hey@brown.edu')
+  generate_user(session, 'hello@brown.edu')
+  generate_user(session, 'hi@brown.edu')
   response = session.get('http://localhost:8000/login')
   # response = session.get(f'http://localhost:8000/admin/users')
-  lec_id = "0"
-  add_lecture_and_question(session, lec_id, faker.word())
+  #lec_id = "0"
+  #add_lecture_and_question(session, lec_id, faker.word())
 
 
   #generate 10 random users and each of them with an answer
@@ -88,6 +89,6 @@ if __name__ == '__main__':
   the_page = response.text
   file = write_html(the_page)
   webbrowser.get('chrome').open(file)
-  #webbrowser.get('chrome').open_new_tab('http://localhost:6033/graph.html')
+  webbrowser.get('chrome').open_new_tab('http://localhost:6033/graph.html')
 
 

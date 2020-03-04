@@ -158,13 +158,6 @@ pub(crate) fn create_user_shard(
     let answer_union = extend_union_string(&email_digest, current_users);
     let query_map = bg.handle.outputs().unwrap();
 
-    if query_map.contains_key("answers_by_lec") {
-      let index_to_delete = query_map.get(&"answers_by_lec".to_string()).unwrap();
-      println!("index:{:?}", index_to_delete);
-      println!("query map {:?}", query_map);
-  //    bg.handle.remove_query("answers_by_lec").expect("failed to remove");
-    }
-
     let mut table = bg.handle.table("users").unwrap().into_sync();
     table
         .insert(vec![
@@ -174,8 +167,10 @@ pub(crate) fn create_user_shard(
         .expect("failed to insert user!");
 
 
-    println!("union : {:?}", answer_union);
-    println!("curr schema: {:?}", bg.handle.outputs().unwrap());
+    if query_map.contains_key("answers_by_lec") {
+      bg.handle.remove_query("answers_by_lec").expect("failed to remove");
+    }
+
     // Create user info table
     let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
       CREATE TABLE answers_{0} (email_key varchar(255), lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (email_key));\
@@ -214,7 +209,7 @@ pub(crate) fn extend_union_string(
 
   let mut extend : Option<String> = None;
   for user in current_users.into_iter() {
-    let next = format!("(SELECT * FROM answers_{} WHERE lec=?)", user);
+    let next = format!("SELECT email_key FROM answers_{0} WHERE lec=?", user);
 
     match extend {
       None => extend = Some(next),
@@ -222,9 +217,9 @@ pub(crate) fn extend_union_string(
     }
   }
 
-  let new_user = format!("(SELECT * FROM answers_{} WHERE lec=?)", new_user_email_digest);
+  let new_user = format!("SELECT email_key FROM answers_{0} WHERE lec=?", new_user_email_digest);
   match extend {
-    None => { return format!("SELECT * FROM answers_{} WHERE lec=?;", new_user_email_digest) },
+    None => { return format!("SELECT email_key FROM answers_{0} WHERE lec=?;", new_user_email_digest) },
     Some(extend) => { return format!("{} UNION {};", extend, new_user) },
   }
 }
