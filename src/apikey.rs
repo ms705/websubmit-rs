@@ -21,6 +21,7 @@ pub(crate) struct ApiKey {
     pub key: String,
 }
 
+
 #[derive(Debug, FromForm)]
 pub(crate) struct ApiKeyRequest {
     email: String,
