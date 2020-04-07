@@ -45,7 +45,6 @@ def create_answer(session, q_num):
 
 def add_lecture_and_question(session, lec_id):
   # adding a lecture
-  print("this is lec id", lec_id)
   lecture = {'lec_id' : lec_id, 'lec_label' : faker.word()}
   lec_add = 'http://localhost:8000/admin/lec/add'
   session.post(lec_add, data=lecture)
@@ -85,19 +84,20 @@ if __name__ == '__main__':
   faker = Faker()
 
   generate_user(session, 'ekiziv@brown.edu')
-  lec_ids = ["0", "1", "2"]
-  for lec_id in lec_ids:
-    add_lecture_and_question(session, lec_id)
+  # lec_ids = ["0", "1", "2"]
+  # for lec_id in lec_ids:
+  #   add_lecture_and_question(session, lec_id)
 
   #generate 10 random users and each of them with an answer
-  for i in range (10):
+  for i in range (25):
+    print("Creating user number:", i)
     response = session.get('http://localhost:8000/login')
     email = faker.email()
-    l_id = random.choices(lec_ids, k=1).pop()
     generate_user(session, email)
-    create_answer(session, l_id)
+    #l_id = random.choices(lec_ids, k=1).pop()
+    # create_answer(session, l_id)
 
-  res = lookup_answers(session, "0")
+  res = lookup_current_users(session)
   visualize_results(session, res)
 
 

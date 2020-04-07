@@ -13,6 +13,9 @@ use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::{Instant};
+use std::fs::OpenOptions;
+use std::io::prelude::*;
 
 /// (username, apikey)
 #[derive(Debug)]
@@ -147,6 +150,8 @@ pub(crate) fn create_user_shard(
     hash: &str,
     config: &State<Config>,
 ) {
+    let mut file = OpenOptions::new().append(true).create(true).open("run.txt").unwrap();
+    let now = Instant::now();
     let new_user_email = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
      let is_admin = if config.staff.contains(&new_user_email) {
         1
@@ -192,6 +197,8 @@ pub(crate) fn create_user_shard(
     userinfo_table
         .insert(vec![email.into(), hash.into(), is_admin.into()])
         .expect("failed to insert userinfo");
+        let to_write = &format!("{},", now.elapsed().as_millis());
+        write!(&mut file, "{}", to_write);
 }
 
 pub(crate) fn get_users_email_keys(
