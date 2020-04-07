@@ -4,6 +4,7 @@ import os
 import requests
 import hashlib
 from faker import Faker
+import random
 
 admin_key ='0ab1f0f6afc524bb5a36641978aa7d37e017d63e6387cef3324bb57d48154c39'
 
@@ -42,9 +43,10 @@ def create_answer(session, q_num):
   session.post(question_url, data=data)
 
 
-def add_lecture_and_question(session, lec_id, lec_label):
-   # adding a lecture
-  lecture = {'lec_id' : lec_id, 'lec_label' : lec_label}
+def add_lecture_and_question(session, lec_id):
+  # adding a lecture
+  print("this is lec id", lec_id)
+  lecture = {'lec_id' : lec_id, 'lec_label' : faker.word()}
   lec_add = 'http://localhost:8000/admin/lec/add'
   session.post(lec_add, data=lecture)
 
@@ -57,38 +59,46 @@ def add_lecture_and_question(session, lec_id, lec_label):
   # return to the leclist
   session.get('http://localhost:8000/leclist')
 
+def lookup_current_users(session):
+  login = 'http://localhost:8000/apikey/check'
+  login_hash = {'key' : admin_key}
+  session.post(login, login_hash)
+  response = session.get(f'http://localhost:8000/admin/users')
+  return response
 
-# I need a notion of continously fetching the url that gets output
-if __name__ == '__main__':
-  session = requests.session()
-  faker = Faker()
+def lookup_answers(session, lec_id):
+  login = 'http://localhost:8000/apikey/check'
+  login_hash = {'key' : admin_key}
+  session.post(login, login_hash)
+  response = session.get(f'http://localhost:8000/answers/{lec_id}')
+  return response
 
-  generate_user(session, 'hey@brown.edu')
-  generate_user(session, 'hello@brown.edu')
-  generate_user(session, 'hi@brown.edu')
-  response = session.get('http://localhost:8000/login')
-  # response = session.get(f'http://localhost:8000/admin/users')
-  #lec_id = "0"
-  #add_lecture_and_question(session, lec_id, faker.word())
-
-
-  #generate 10 random users and each of them with an answer
-  # for i in range (1):
-  #   response = session.get('http://localhost:8000/login')
-  #   email = faker.email()
-  #   generate_user(session, email)
-  #   create_answer(session, lec_id)
-
-  # # login as admin and see the users
-  # login = 'http://localhost:8000/apikey/check'
-  # login_hash = {'key' : admin_key}
-  # session.post(login, login_hash)
-  # response = session.get(f'http://localhost:8000/answers/{lec_id}')
-
-  # visualizing the final page.decode('utf-8')
+def visualize_results(session, response):
   the_page = response.text
   file = write_html(the_page)
   webbrowser.get('chrome').open(file)
   webbrowser.get('chrome').open_new_tab('http://localhost:6033/graph.html')
+
+
+if __name__ == '__main__':
+  session = requests.session()
+  faker = Faker()
+
+  generate_user(session, 'ekiziv@brown.edu')
+  lec_ids = ["0", "1", "2"]
+  for lec_id in lec_ids:
+    add_lecture_and_question(session, lec_id)
+
+  #generate 10 random users and each of them with an answer
+  for i in range (10):
+    response = session.get('http://localhost:8000/login')
+    email = faker.email()
+    l_id = random.choices(lec_ids, k=1).pop()
+    generate_user(session, email)
+    create_answer(session, l_id)
+
+  res = lookup_answers(session, "0")
+  visualize_results(session, res)
+
 
 

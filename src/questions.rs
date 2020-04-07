@@ -162,7 +162,7 @@ pub(crate) fn questions(
     let mut answers = HashMap::new();
 
     for r in answers_res {
-        let id: u64 = r[2].clone().into(); //r[2].clone().into();
+        let id: u64 = r[2].clone().into();
         let atext: String = r[3].clone().into();
         answers.insert(id, atext);
     }

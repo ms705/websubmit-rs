@@ -1,3 +1,4 @@
+use crate::apikey::get_users_email_keys;
 use crate::apikey::ApiKey;
 use crate::backend::NoriaBackend;
 use crate::config::Config;
@@ -51,7 +52,7 @@ pub(crate) struct AdminLecAdd {
 pub(crate) struct User {
   email: String,
   apikey: String,
-  is_admin: u8,
+  is_admin: i64,
 }
 
 #[derive(Serialize)]
@@ -121,19 +122,8 @@ pub(crate) fn get_registered_users(
   config: State<Config>,
 ) -> Template {
   let mut bg = backend.lock().unwrap();
-  let mut h = bg.handle.view("all_users").unwrap().into_sync();
-  // 0 is a bogokey
-  let users_table = h
-    .lookup(&[(0 as u64).into()], true)
-    .expect("user list lookup failed");
-  let email_keys: Vec<String> = users_table
-    .clone()
-    .into_iter()
-    .map(|r| r[1].clone().into())
-    .collect();
-
-  let mut users: Vec<_> = Vec::new();
-
+  let email_keys = get_users_email_keys(&mut bg);
+  let mut users = Vec::new();
   for email in email_keys.iter() {
     let mut personal_view = bg
       .handle
@@ -149,14 +139,14 @@ pub(crate) fn get_registered_users(
       .map(|r| User {
         email: r[0].clone().into(),
         apikey: r[2].clone().into(),
-        is_admin: if config.staff.contains(&email) { 1 } else { 0 },
+        is_admin: r[1].clone().into(),
       })
       .collect();
-
     for user in curr_users {
       users.push(user);
     }
   }
+
 
   let ctx = UserContext {
     users: users,
