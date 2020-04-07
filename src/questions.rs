@@ -150,15 +150,17 @@ pub(crate) fn questions(
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Template {
     use std::collections::HashMap;
+    let key: DataType = (num as u64).into();
 
     let mut bg = backend.lock().unwrap();
     let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
-    let key: DataType = (num as u64).into();
 
-    let mut ah = bg.handle.view("answers_by_lec").unwrap().into_sync();
+    // Fetch my answers for the lecture
+    let view_name = &format!("my_answers_for_lec_{}", apikey.user);
+    let mut ah = bg.handle.view(view_name).unwrap().into_sync();
     let answers_res = ah
         .lookup(&[(num as u64).into()], true)
-        .expect("lecture questions lookup failed");
+        .expect("my_answers_for_lec lookup failed");
     let mut answers = HashMap::new();
 
     for r in answers_res {

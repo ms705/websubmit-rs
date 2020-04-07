@@ -4,6 +4,7 @@
     <form action="/questions/{{{ lec_id }}}" method="post" accept-charset="utf-8">
       {{#each questions}}
       <label>{{{ this.prompt }}}:
+      <li> Previous answer: {{{ this.answer }}}
         <p>
         <textarea name="q_{{{ this.id }}}" rows="10" cols="80">Write something here.</textarea>
         </p>

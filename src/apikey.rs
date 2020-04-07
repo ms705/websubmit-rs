@@ -176,6 +176,7 @@ pub(crate) fn create_user_shard(
     let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
       CREATE TABLE answers_{0} (email_key varchar(255), lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (email_key));\
       QUERY userinfo_from_{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
+      QUERY my_answers_for_lec_{0}: SELECT email_key, lec, q, answer FROM answers_{0} WHERE answers_{0}.lec=?;\
       QUERY answers: {1}\
       QUERY answers_by_lec: SELECT email_key, lec, q, answer, submitted_at FROM answers where answers.lec=?;",
       new_user_email.clone(), answer_union);

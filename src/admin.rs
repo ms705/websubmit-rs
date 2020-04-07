@@ -36,7 +36,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
   }
 }
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, FromForm, Serialize)]
 pub(crate) struct AddLectureQuestionForm {
   q_id: u64,
   q_prompt: String,
@@ -44,7 +44,7 @@ pub(crate) struct AddLectureQuestionForm {
 
 #[derive(Debug, FromForm)]
 pub(crate) struct AdminLecAdd {
-  lec_id: u8,
+  lec_id: i64,
   lec_label: String,
 }
 
@@ -59,6 +59,13 @@ pub(crate) struct User {
 struct UserContext {
   users: Vec<User>,
   parent: &'static str,
+}
+
+#[derive(Serialize)]
+struct QuestionContext {
+  questions: Vec<AddLectureQuestionForm>,
+  parent: &'static str,
+  lec_id: String,
 }
 
 #[get("/")]
@@ -88,10 +95,24 @@ pub(crate) fn lec_add_submit(
 }
 
 #[get("/<num>")]
-pub(crate) fn lec(_adm: Admin, num: u8, _backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
-  let mut ctx = HashMap::new();
-  ctx.insert("lec_id", format!("{}", num));
-  ctx.insert("parent", String::from("layout"));
+pub(crate) fn lec(_adm: Admin, num: i64, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+  let mut bg = backend.lock().unwrap();
+  let mut qs_view = bg.handle.view("qs_by_lec").unwrap().into_sync();
+  let lookup = qs_view
+                      .lookup(&[num.into()], true)
+                      .expect("failed to look up the user in a personal table");
+  let curr_questions: Vec<_> = lookup
+                      .into_iter()
+                      .map(|r| AddLectureQuestionForm {
+                        q_id: r[1].clone().into(),
+                        q_prompt: r[2].clone().into(),
+                      })
+                      .collect();
+  let ctx = QuestionContext {
+    lec_id: format!("{}", num),
+    parent: "layout",
+    questions: curr_questions,
+  };
   Template::render("admin/lec", &ctx)
 }
 
@@ -118,8 +139,7 @@ pub(crate) fn lec_submit(
 #[get("/")]
 pub(crate) fn get_registered_users(
   _adm: Admin,
-  backend: State<Arc<Mutex<NoriaBackend>>>,
-  config: State<Config>,
+  backend: State<Arc<Mutex<NoriaBackend>>>
 ) -> Template {
   let mut bg = backend.lock().unwrap();
   let email_keys = get_users_email_keys(&mut bg);
