@@ -12,10 +12,10 @@ use rocket::response::Redirect;
 use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::{Instant};
 use std::fs::OpenOptions;
 use std::io::prelude::*;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 /// (username, apikey)
 #[derive(Debug)]
@@ -23,7 +23,6 @@ pub(crate) struct ApiKey {
     pub user: String,
     pub key: String,
 }
-
 
 #[derive(Debug, FromForm)]
 pub(crate) struct ApiKeyRequest {
@@ -150,10 +149,14 @@ pub(crate) fn create_user_shard(
     hash: &str,
     config: &State<Config>,
 ) {
-    let mut file = OpenOptions::new().append(true).create(true).open("run.txt").unwrap();
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("run.txt")
+        .unwrap();
     let now = Instant::now();
     let new_user_email = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
-     let is_admin = if config.staff.contains(&new_user_email) {
+    let is_admin = if config.staff.contains(&new_user_email) {
         1
     } else {
         0
@@ -174,7 +177,6 @@ pub(crate) fn create_user_shard(
         bg.handle
             .remove_query("answers")
             .expect("failed to remove answers");
-
     };
 
     // Create user info table
@@ -197,8 +199,8 @@ pub(crate) fn create_user_shard(
     userinfo_table
         .insert(vec![email.into(), hash.into(), is_admin.into()])
         .expect("failed to insert userinfo");
-        let to_write = &format!("{},", now.elapsed().as_millis());
-        write!(&mut file, "{}", to_write);
+    let to_write = &format!("{},", now.elapsed().as_millis());
+    write!(&mut file, "{}", to_write);
 }
 
 pub(crate) fn get_users_email_keys(
@@ -219,13 +221,13 @@ pub(crate) fn get_users_email_keys(
     return email_keys;
 }
 
-pub(crate) fn extend_union_string(
-    new_user_email: &String,
-    current_users: Vec<String>,
-) -> String {
+pub(crate) fn extend_union_string(new_user_email: &String, current_users: Vec<String>) -> String {
     let mut extend: Option<String> = None;
     for user in current_users.into_iter() {
-        let next = format!("SELECT email_key, lec, q, answer, submitted_at FROM answers_{0}", user);
+        let next = format!(
+            "SELECT email_key, lec, q, answer, submitted_at FROM answers_{0}",
+            user
+        );
 
         match extend {
             None => extend = Some(next),
