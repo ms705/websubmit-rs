@@ -70,7 +70,7 @@ pub(crate) fn generate(
     // add a secret to make API keys unforgeable without access to the server
     hasher.input_str(&config.secret);
     let hash = hasher.result_str();
-
+    println!("Apikey generated is {:?}", hash.clone());
     let mut bg = backend.lock().unwrap();
     create_user_shard(&mut bg, data.email.clone(), hash.as_str(), &config);
 
@@ -97,8 +97,12 @@ pub(crate) fn check_api_key(
 ) -> Result<String, ApiKeyError> {
     let mut bg = backend.lock().unwrap();
     let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
+    println!("Looking up the following key: {:?}", key);
+    let res = v.lookup(&[key.into()], true);
+    println!("This is users_by_apikey {:?}", v.clone());
 
-    match v.lookup(&[key.into()], true) {
+
+    match res{
         Ok(rs) => {
             if rs.len() < 1 {
                 Err(ApiKeyError::Missing)
@@ -180,25 +184,25 @@ pub(crate) fn create_user_shard(
     };
 
     // Create user info table
-    let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
-      CREATE TABLE answers_{0} (email_key varchar(255), lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (email_key));\
-      QUERY userinfo_from_{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
-      QUERY my_answers_for_lec_{0}: SELECT email_key, lec, q, answer FROM answers_{0} WHERE answers_{0}.lec=?;\
-      QUERY answers: {1}\
-      QUERY answers_by_lec: SELECT email_key, lec, q, answer, submitted_at FROM answers where answers.lec=?;",
-      new_user_email.clone(), answer_union);
-
-    bg.handle.extend_recipe(sql).unwrap();
-
-    let mut userinfo_table = bg
-        .handle
-        .table(format!("userinfo_{}", new_user_email))
-        .unwrap()
-        .into_sync();
-
-    userinfo_table
-        .insert(vec![email.into(), hash.into(), is_admin.into()])
-        .expect("failed to insert userinfo");
+    // let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
+    //   CREATE TABLE answers_{0} (email_key varchar(255), lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (email_key));\
+    //   QUERY userinfo_from_{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
+    //   QUERY my_answers_for_lec_{0}: SELECT email_key, lec, q, answer FROM answers_{0} WHERE answers_{0}.lec=?;\
+    //   QUERY answers: {1}\
+    //   QUERY answers_by_lec: SELECT email_key, lec, q, answer, submitted_at FROM answers where answers.lec=?;",
+    //   new_user_email.clone(), answer_union);
+    //
+    // bg.handle.extend_recipe(sql).unwrap();
+    //
+    // let mut userinfo_table = bg
+    //     .handle
+    //     .table(format!("userinfo_{}", new_user_email))
+    //     .unwrap()
+    //     .into_sync();
+    //
+    // userinfo_table
+    //     .insert(vec![email.into(), hash.into(), is_admin.into()])
+    //     .expect("failed to insert userinfo");
     let to_write = &format!("{},", now.elapsed().as_millis());
     write!(&mut file, "{}", to_write);
 }
@@ -206,14 +210,15 @@ pub(crate) fn create_user_shard(
 pub(crate) fn get_users_email_keys(
     bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
 ) -> Vec<String> {
-    let users_table = bg
+    let mut users_table = bg
         .handle
         .view("all_users")
         .unwrap()
-        .into_sync()
-        .lookup(&[(0 as u64).into()], true)
-        .expect("user list lookup failed");
-    let email_keys: Vec<String> = users_table
+        .into_sync();
+    println!("users view {:?}", users_table);
+
+    let res = users_table.lookup(&[(0 as u64).into()], true).unwrap();
+    let email_keys: Vec<String> = res
         .clone()
         .into_iter()
         .map(|r| r[0].clone().into())

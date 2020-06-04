@@ -1,4 +1,5 @@
 #![feature(proc_macro_hygiene, decl_macro)]
+#![feature(crate_visibility_modifier)]
 
 extern crate clap;
 extern crate crypto;
@@ -27,6 +28,7 @@ use rocket::response::Redirect;
 use rocket::State;
 use rocket_contrib::templates::Template;
 use std::sync::{Arc, Mutex};
+use std::borrow::BorrowMut;
 
 pub fn new_logger() -> slog::Logger {
     use slog::Drain;
@@ -55,13 +57,13 @@ fn main() {
     use std::path::Path;
 
     let args = args::parse_args();
-
+    let mut noria = NoriaBackend::new(
+        &format!("127.0.0.1:2181/{}", args.class),
+        Some(new_logger()),
+    )
+        .unwrap();
     let backend = Arc::new(Mutex::new(
-        NoriaBackend::new(
-            &format!("127.0.0.1:2181/{}", args.class),
-            Some(new_logger()),
-        )
-        .unwrap(),
+        noria,
     ));
 
     let config = args.config;
