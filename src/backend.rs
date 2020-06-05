@@ -5,16 +5,21 @@ use noria::consensus::LocalAuthority;
 use std::time::Duration;
 use noria::builder::Builder;
 use noria::handle::{SyncHandle};
-use noria::manual::ops::filter::{Filter, FilterCondition, Value};
-use noria::manual::ops::project::Project;
-use noria::manual::Operator;
-use noria::manual::Base;
-use std::{thread};
+pub use noria::manual::ops::filter::{Filter, FilterCondition, Value};
+pub use noria::manual::ops::project::Project;
+pub use noria::manual::ops::identity::Identity;
+pub use noria::manual::ops::join::{Join, JoinType, JoinSource};
+pub use noria::manual::Operator;
+pub use noria::manual::Base;
+pub use std::{thread};
+pub use noria::manual::ops::grouped::aggregate::Aggregation;
+pub use noria::NodeIndex;
 
 
 pub struct NoriaBackend {
     pub handle: SyncHandle<LocalAuthority>,
     _log: slog::Logger,
+    pub union: Option<NodeIndex>,
 }
 
 impl NoriaBackend {
@@ -27,7 +32,6 @@ impl NoriaBackend {
         let mut b = Builder::default();
         b.set_sharding(None);
         b.disable_partial();
-        b.log_with(log.clone());
         b.set_persistence(PersistenceParameters::new(
             DurabilityMode::MemoryOnly,
             Duration::from_millis(1),
@@ -42,46 +46,39 @@ impl NoriaBackend {
             let users = mig.add_base("users", &["email_key", "apikey"], Base::new(vec![]).with_key(vec![1]));
             let lectures = mig.add_base("lectures", &["id", "label"], Base::new(vec![]).with_key(vec![0]));
             let questions = mig.add_base("questions", &["lec", "q", "question"], Base::new(vec![]).with_key(vec![0, 1]));
-            println!("Created questions");
-            // figure out the aggregation
-            // let leclist = mig.add_ingredient("leclist", &["id", "label"], )
-            let lecture_filters = Some(&[
-                Some(FilterCondition::Comparison(
-                    Operator::Equal,
-                    Value::Column(0),
-                )),
-                None,
-            ]);
-            let lecture = mig.add_ingredient("lecture", &["id", "label"], Filter::new(lectures, lecture_filters.unwrap()));
-            let question_filters = Some(&[
-                Some(FilterCondition::Comparison(
-                    Operator::Equal,
-                    Value::Column(0),
-                )),
-                None,
-                None,
-            ]);
-            let qs_by_lec = mig.add_ingredient("qs_by_lec", &["lec", "q", "question"], Filter::new(questions, question_filters.unwrap()));
-            let user_filters = Some(&[
-                None,
-                Some(FilterCondition::Comparison(
-                    Operator::Equal,
-                    Value::Constant(DataType::None),
-                )),
-            ]);
-            let users_by_apikey = mig.add_ingredient("users_by_apikey", &["email_key", "apikey"],
-                                                     Filter::new(users, user_filters.unwrap()));
-            let all_users = mig.add_ingredient("all_users", &["email_key"],
-                                               Project::new(users, &[0], None, None));
-            mig.maintain_anonymous(all_users, &[0]);
-            mig.maintain_anonymous(users_by_apikey, &[0]);
+
+
+            let qcount = mig.add_ingredient("qcount", &["lec", "qcount"], Aggregation::COUNT.over(questions, 1, &[0]));
+            let qc = mig.add_ingredient("qc", &["lec", "qcount"], Project::new(qcount, &[0, 1], None, None));
+
+            let j = Join::new(qc, lectures, JoinType::Left, vec!(JoinSource::B(0, 0), JoinSource::R(1), JoinSource::L(1)));
+            let ll = mig.add_ingredient("ll", &["id", "label", "qc"], j);
+            let leclist = mig.add_ingredient("leclist", &["id", "label", "qc"], Project::new(ll, &[0, 1, 2], None, None));
+            mig.maintain_anonymous(leclist, &[0]);
+
+
+            let lecture = mig.add_ingredient("lecture", &["id", "label"], Project::new(lectures, &[0, 1], Some(vec![0.into()]), None));
+            mig.maintain_anonymous(lecture, &[2]);
+
+
+            let qs_by_lec = mig.add_ingredient("qs_by_lec", &["lec", "q", "question"], Project::new(questions, &[0, 1, 2], Some(vec![0.into()]), None));
             mig.maintain_anonymous(qs_by_lec, &[0]);
-            mig.maintain_anonymous(lecture, &[0]);
+
+
+            let users_by_apikey = mig.add_ingredient("users_by_apikey", &["email_key", "apikey"],
+                                                     Project::new(users, &[0, 1], None, None));
+            mig.maintain_anonymous(users_by_apikey, &[1]);
+
+
+            let all_users = mig.add_ingredient("all_users", &["email_key"],
+                                               Project::new(users, &[0], Some(vec![0.into()]), None));
+            mig.maintain_anonymous(all_users, &[1]);
         });
 
         Ok(NoriaBackend {
             handle: sh,
             _log: log,
+            union: None,
         })
     }
 }

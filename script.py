@@ -85,20 +85,21 @@ if __name__ == '__main__':
 
   generate_user(session, 'ekiziv@brown.edu')
   # lec_ids = ["0", "1", "2"]
-  # for lec_id in lec_ids:
-  #   add_lecture_and_question(session, lec_id)
+  lec_ids = ["0"]
+  for lec_id in lec_ids:
+    add_lecture_and_question(session, lec_id)
 
   #generate 10 random users and each of them with an answer
-  # for i in range (25):
-  #   print("Creating user number:", i)
-  #   response = session.get('http://localhost:8000/login')
-  #   email = faker.email()
-  #   generate_user(session, email)
-  #   #l_id = random.choices(lec_ids, k=1).pop()
-  #   # create_answer(session, l_id)s
+  for i in range (9):
+    print("Creating user number:", i)
+    response = session.get('http://localhost:8000/login')
+    email = faker.email()
+    generate_user(session, email)
+    l_id = random.choices(lec_ids, k=1).pop()
+    create_answer(session, l_id)
 
-  # res = lookup_current_users(session)
-  # visualize_results(session, res)
+  res = lookup_answers(session, "0")
+  visualize_results(session, res)
 
 
 

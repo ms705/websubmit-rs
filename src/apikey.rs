@@ -16,6 +16,9 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use noria::manual::Base;
+use noria::manual::ops::project::Project;
+use noria::manual::ops::union::Union;
 
 /// (username, apikey)
 #[derive(Debug)]
@@ -153,58 +156,60 @@ pub(crate) fn create_user_shard(
     hash: &str,
     config: &State<Config>,
 ) {
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open("run.txt")
-        .unwrap();
-    let now = Instant::now();
     let new_user_email = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
     let is_admin = if config.staff.contains(&new_user_email) {
         1
     } else {
         0
     };
-    let current_users = get_users_email_keys(bg);
-    let answer_union = extend_union_string(&new_user_email, current_users);
-    let query_map = bg.handle.outputs().unwrap();
+    // keep it this way for the sake of compatibility with the previous solution
+    let num_users = get_users_email_keys(bg).len();
 
     let mut table = bg.handle.table("users").unwrap().into_sync();
     table
         .insert(vec![new_user_email.clone().into(), hash.into()])
         .expect("failed to insert user!");
 
-    if query_map.contains_key("answers_by_lec") {
-        bg.handle
-            .remove_query("answers_by_lec")
-            .expect("failed to remove answers_by_lec");
-        bg.handle
-            .remove_query("answers")
-            .expect("failed to remove answers");
-    };
+    let user_email = new_user_email.clone();
 
-    // Create user info table
-    // let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
-    //   CREATE TABLE answers_{0} (email_key varchar(255), lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (email_key));\
-    //   QUERY userinfo_from_{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
-    //   QUERY my_answers_for_lec_{0}: SELECT email_key, lec, q, answer FROM answers_{0} WHERE answers_{0}.lec=?;\
-    //   QUERY answers: {1}\
-    //   QUERY answers_by_lec: SELECT email_key, lec, q, answer, submitted_at FROM answers where answers.lec=?;",
-    //   new_user_email.clone(), answer_union);
-    //
-    // bg.handle.extend_recipe(sql).unwrap();
-    //
-    // let mut userinfo_table = bg
-    //     .handle
-    //     .table(format!("userinfo_{}", new_user_email))
-    //     .unwrap()
-    //     .into_sync();
-    //
-    // userinfo_table
-    //     .insert(vec![email.into(), hash.into(), is_admin.into()])
-    //     .expect("failed to insert userinfo");
-    let to_write = &format!("{},", now.elapsed().as_millis());
-    write!(&mut file, "{}", to_write);
+    let mut union_index = None;
+    if num_users >= 1 {
+        union_index = Some(bg.union.unwrap());
+    }
+    union_index = bg.handle.migrate( move |mig| {
+        let userinfo = mig.add_base(format!("userinfo_{}",user_email.clone()), &["email", "apikey", "is_admin"], Base::new(vec![]).with_key(vec![0]));
+        let userinfo_from = mig.add_ingredient(format!("userinfo_from_{}", user_email.clone()), &["email", "is_admin", "apikey"], Project::new(userinfo, &[0, 2, 1], Some(vec![0.into()]), None));
+        mig.maintain_anonymous(userinfo_from, &[3]);
+
+        let answers = mig.add_base(format!("answers_{}",user_email.clone()), &["email_key", "lec", "q", "answer", "submitted_at"], Base::new(vec![]).with_key(vec![0]));
+        let my_answers_for_lec = mig.add_ingredient(format!("my_answers_for_lec_{}", user_email.clone()), &["email_key", "lec", "q", "answer"], Project::new(answers, &[0, 1, 2, 3], None, None));
+        mig.maintain_anonymous( my_answers_for_lec, &[1]);
+
+        if current_users.len() == 0 {
+            let mut emits = HashMap::new();
+            emits.insert(answers, vec![0, 1, 2, 3, 4]);
+            let u = Union::new(emits);
+            let answers_union = mig.add_ingredient("answers_union", &["email_key", "lec", "q", "answer", "submitted_at"], u);
+            let answers_by_lec = mig.add_ingredient("answers_by_lec", &["email_key", "lec", "q", "answer", "submitted_at"], Project::new(answers_union, &[0, 1, 2, 3, 4], None, None));
+            mig.maintain_anonymous( answers_by_lec, &[1]);
+            Some(answers_union)
+        } else {
+            mig.add_parent(answers, union_index.unwrap(), vec![0, 1, 2, 3, 4]);
+            union_index
+        }
+    });
+    if num_users == 0 {
+        bg.union = union_index;
+    }
+    let mut userinfo_table = bg
+        .handle
+        .table(format!("userinfo_{}", new_user_email))
+        .unwrap()
+        .into_sync();
+
+    userinfo_table
+        .insert(vec![email.into(), hash.into(), is_admin.into()])
+        .expect("failed to insert userinfo");
 }
 
 pub(crate) fn get_users_email_keys(
@@ -225,7 +230,7 @@ pub(crate) fn get_users_email_keys(
         .collect();
     return email_keys;
 }
-
+#[allow(dead_code)]
 pub(crate) fn extend_union_string(new_user_email: &String, current_users: Vec<String>) -> String {
     let mut extend: Option<String> = None;
     for user in current_users.into_iter() {
