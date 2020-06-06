@@ -13,12 +13,17 @@ use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::{Instant};
+use std::fs::OpenOptions;
+use std::io::prelude::*;
 
 /// (username, apikey)
+#[derive(Debug)]
 pub(crate) struct ApiKey {
     pub user: String,
     pub key: String,
 }
+
 
 #[derive(Debug, FromForm)]
 pub(crate) struct ApiKeyRequest {
@@ -67,22 +72,8 @@ pub(crate) fn generate(
     hasher.input_str(&config.secret);
     let hash = hasher.result_str();
 
-    let is_admin = if config.staff.contains(&data.email) {
-        1.into()
-    } else {
-        0.into()
-    };
-
-    // insert into Noria if not exists
     let mut bg = backend.lock().unwrap();
-    let mut table = bg.handle.table("users").unwrap().into_sync();
-    table
-        .insert(vec![
-            data.email.as_str().into(),
-            hash.as_str().into(),
-            is_admin,
-        ])
-        .expect("failed to insert user!");
+    create_user_shard(&mut bg, data.email.clone(), hash.as_str(), &config);
 
     if config.send_emails {
         email::send(
@@ -107,6 +98,7 @@ pub(crate) fn check_api_key(
 ) -> Result<String, ApiKeyError> {
     let mut bg = backend.lock().unwrap();
     let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
+
     match v.lookup(&[key.into()], true) {
         Ok(rs) => {
             if rs.len() < 1 {
@@ -149,5 +141,110 @@ pub(crate) fn check(
         let cookie = Cookie::build("apikey", data.key.clone()).path("/").finish();
         cookies.add(cookie);
         Redirect::to("/leclist")
+    }
+}
+
+pub(crate) fn create_user_shard(
+    bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
+    email: String,
+    hash: &str,
+    config: &State<Config>,
+) {
+    let mut file = OpenOptions::new().append(true).create(true).open("run.txt").unwrap();
+    let now = Instant::now();
+    let new_user_email = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
+     let is_admin = if config.staff.contains(&new_user_email) {
+        1
+    } else {
+        0
+    };
+    let current_users = get_users_email_keys(bg);
+    let answer_union = extend_union_string(&new_user_email, current_users);
+    let query_map = bg.handle.outputs().unwrap();
+
+    let mut table = bg.handle.table("users").unwrap().into_sync();
+    table
+        .insert(vec![new_user_email.clone().into(), hash.into()])
+        .expect("failed to insert user!");
+
+    if query_map.contains_key("answers_by_lec") {
+        bg.handle
+            .remove_query("answers_by_lec")
+            .expect("failed to remove answers_by_lec");
+        bg.handle
+            .remove_query("answers")
+            .expect("failed to remove answers");
+
+    };
+
+    // Create user info table
+    let sql = format!("CREATE TABLE userinfo_{0} (email varchar(255), apikey text, is_admin tinyint, PRIMARY KEY (apikey));\
+      CREATE TABLE answers_{0} (email_key varchar(255), lec int, q int, answer text, submitted_at datetime, PRIMARY KEY (email_key));\
+      QUERY userinfo_from_{0}: SELECT email, is_admin, apikey FROM userinfo_{0};\
+      QUERY my_answers_for_lec_{0}: SELECT email_key, lec, q, answer FROM answers_{0} WHERE answers_{0}.lec=?;\
+      QUERY answers: {1}\
+      QUERY answers_by_lec: SELECT email_key, lec, q, answer, submitted_at FROM answers where answers.lec=?;",
+      new_user_email.clone(), answer_union);
+
+    bg.handle.extend_recipe(sql).unwrap();
+
+    let mut userinfo_table = bg
+        .handle
+        .table(format!("userinfo_{}", new_user_email))
+        .unwrap()
+        .into_sync();
+
+    userinfo_table
+        .insert(vec![email.into(), hash.into(), is_admin.into()])
+        .expect("failed to insert userinfo");
+        let to_write = &format!("{},", now.elapsed().as_millis());
+        write!(&mut file, "{}", to_write);
+}
+
+pub(crate) fn get_users_email_keys(
+    bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
+) -> Vec<String> {
+    let users_table = bg
+        .handle
+        .view("all_users")
+        .unwrap()
+        .into_sync()
+        .lookup(&[(0 as u64).into()], true)
+        .expect("user list lookup failed");
+    let email_keys: Vec<String> = users_table
+        .clone()
+        .into_iter()
+        .map(|r| r[0].clone().into())
+        .collect();
+    return email_keys;
+}
+
+pub(crate) fn extend_union_string(
+    new_user_email: &String,
+    current_users: Vec<String>,
+) -> String {
+    let mut extend: Option<String> = None;
+    for user in current_users.into_iter() {
+        let next = format!("SELECT email_key, lec, q, answer, submitted_at FROM answers_{0}", user);
+
+        match extend {
+            None => extend = Some(next),
+            Some(val) => extend = Some(format!("{} UNION {}", val, next)),
+        }
+    }
+
+    // appending new user
+    let new_user = format!(
+        "SELECT email_key, lec, q, answer, submitted_at FROM answers_{0}",
+        new_user_email
+    );
+    match extend {
+        None => {
+            return format!(
+                "SELECT email_key, lec, q, answer, submitted_at FROM answers_{0};",
+                new_user_email
+            )
+        }
+        Some(extend) => return format!("{} UNION {};", extend, new_user),
     }
 }

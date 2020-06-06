@@ -72,7 +72,6 @@ pub(crate) fn leclist(
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("leclist").unwrap().into_sync();
-
     let user = apikey.user.clone();
     let admin = config.staff.contains(&user);
 
@@ -116,11 +115,12 @@ pub(crate) fn answers(
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
+
     let mut h = bg.handle.view("answers_by_lec").unwrap().into_sync();
-
-    let key: DataType = (num as u64).into();
-
-    let res = h.lookup(&[key], true).expect("failed to look up answers!");
+    // 0 is a bogokey
+    let res = h
+        .lookup(&[(num as u64).into()], true)
+        .expect("user list lookup failed");
     let answers: Vec<_> = res
         .into_iter()
         .map(|r| LectureAnswer {
@@ -150,15 +150,17 @@ pub(crate) fn questions(
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Template {
     use std::collections::HashMap;
+    let key: DataType = (num as u64).into();
 
     let mut bg = backend.lock().unwrap();
     let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
-    let key: DataType = (num as u64).into();
 
-    let mut ah = bg.handle.view("my_answers_for_lec").unwrap().into_sync();
+    // Fetch my answers for the lecture
+    let view_name = &format!("my_answers_for_lec_{}", apikey.user);
+    let mut ah = bg.handle.view(view_name).unwrap().into_sync();
     let answers_res = ah
-        .lookup(&[(num as u64).into(), apikey.user.clone().into()], true)
-        .expect("lecture questions lookup failed");
+        .lookup(&[(num as u64).into()], true)
+        .expect("my_answers_for_lec lookup failed");
     let mut answers = HashMap::new();
 
     for r in answers_res {
@@ -233,11 +235,13 @@ pub(crate) fn questions_submit(
     let num: DataType = (num as u64).into();
     let ts: DataType = DataType::Timestamp(Local::now().naive_local());
 
-    let mut table = bg.handle.table("answers").unwrap().into_sync();
+    let email_digest = get_email_from_apikey(&mut bg, apikey.key.clone());
+    let tn = format!("answers_{}", email_digest);
+    let mut table = bg.handle.table(tn).unwrap().into_sync();
 
     for (id, answer) in &data.answers {
         let rec: Vec<DataType> = vec![
-            apikey.user.clone().into(),
+            email_digest.clone().into(),
             num.clone(),
             (*id).into(),
             answer.clone().into(),
@@ -264,4 +268,16 @@ pub(crate) fn questions_submit(
     }
 
     Redirect::to("/leclist")
+}
+
+pub(crate) fn get_email_from_apikey(
+    bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
+    apikey: String,
+) -> String {
+    let mut email_from_apikey = bg.handle.view("users_by_apikey").unwrap().into_sync();
+    let email = email_from_apikey
+        .lookup(&[apikey.into()], true)
+        .expect("email lookup failed");
+    let e: String = email[0][0].clone().into();
+    return e;
 }
