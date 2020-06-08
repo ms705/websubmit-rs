@@ -156,6 +156,12 @@ pub(crate) fn create_user_shard(
     hash: &str,
     config: &State<Config>,
 ) {
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("client_side_time_to_add_user.txt")
+        .unwrap();
+    let now = Instant::now();
     let new_user_email = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
     let is_admin = if config.staff.contains(&new_user_email) {
         1
@@ -185,7 +191,7 @@ pub(crate) fn create_user_shard(
         let my_answers_for_lec = mig.add_ingredient(format!("my_answers_for_lec_{}", user_email.clone()), &["email_key", "lec", "q", "answer"], Project::new(answers, &[0, 1, 2, 3], None, None));
         mig.maintain_anonymous( my_answers_for_lec, &[1]);
 
-        if current_users.len() == 0 {
+        if num_users == 0 {
             let mut emits = HashMap::new();
             emits.insert(answers, vec![0, 1, 2, 3, 4]);
             let u = Union::new(emits);
@@ -210,6 +216,9 @@ pub(crate) fn create_user_shard(
     userinfo_table
         .insert(vec![email.into(), hash.into(), is_admin.into()])
         .expect("failed to insert userinfo");
+    let to_write = &format!("{}\n", now.elapsed().as_millis());
+    write!(&mut file, "{}", to_write);
+    println!("{}", bg.handle.graphviz().unwrap());
 }
 
 pub(crate) fn get_users_email_keys(

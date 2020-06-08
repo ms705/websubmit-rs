@@ -90,7 +90,7 @@ if __name__ == '__main__':
     add_lecture_and_question(session, lec_id)
 
   #generate 10 random users and each of them with an answer
-  for i in range (9):
+  for i in range (99):
     print("Creating user number:", i)
     response = session.get('http://localhost:8000/login')
     email = faker.email()
