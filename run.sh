@@ -1,6 +1,8 @@
 #!/bin/bash
 
-cargo run --bin noria-zk -- --deployment $1 --clean
+cargo run --bin noria-zk -- --deployment hello --clean
 rm -r *.db
-RUST_BACKTRACE=1 cargo run -- -i hello &> run.txt
+rm write_time.txt
+RUST_BACKTRACE=1 cargo run --release -- -i hello
+# &> run.txt
 

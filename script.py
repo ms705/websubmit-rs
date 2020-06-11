@@ -5,8 +5,10 @@ import requests
 import hashlib
 from faker import Faker
 import random
+from time import perf_counter_ns
 
 admin_key ='0ab1f0f6afc524bb5a36641978aa7d37e017d63e6387cef3324bb57d48154c39'
+responses = 100
 
 def write_html(page):
   f = open('page.html','w')
@@ -35,11 +37,16 @@ def generate_user(session, email):
   login_hash = {'key' : key}
   session.post(apikey_check, login_hash)
 
-def create_answer(session, q_num):
-  question_url = f'http://localhost:8000/questions/{q_num}'
+def create_answer(session, lec_num):
+  question_url = f'http://localhost:8000/questions/{lec_num}'
   session.get(question_url)
-  # answer one question
-  data = {f'q_{q_num}': faker.sentence()}
+  data = {}
+  start = perf_counter_ns()
+  for q in range(responses):
+    data.update({f'q_{str(q)}': faker.sentence()})
+  end = perf_counter_ns()
+  f=open("write_time.txt", "a+")
+  f.write(f'{end-start}\n')
   session.post(question_url, data=data)
 
 
@@ -49,11 +56,14 @@ def add_lecture_and_question(session, lec_id):
   lec_add = 'http://localhost:8000/admin/lec/add'
   session.post(lec_add, data=lecture)
 
-  # add one question
+  # add 1 question
   lec_addr = f'http://localhost:8000/admin/lec/{lec_id}'
   session.get(lec_addr)
-  q1 = {"q_id": "0", "q_prompt": faker.sentence()}
-  session.post(lec_addr, q1)
+  data = {}
+  for q in range(responses):
+    q1 = {"q_id": str(q), "q_prompt": faker.sentence()}
+    data.update(q1)
+  session.post(lec_addr, data)
 
   # return to the leclist
   session.get('http://localhost:8000/leclist')
@@ -84,10 +94,7 @@ if __name__ == '__main__':
   faker = Faker()
 
   generate_user(session, 'ekiziv@brown.edu')
-  # lec_ids = ["0", "1", "2"]
-  lec_ids = ["0"]
-  for lec_id in lec_ids:
-    add_lecture_and_question(session, lec_id)
+  add_lecture_and_question(session, "0")
 
   #generate 10 random users and each of them with an answer
   for i in range (99):
@@ -95,10 +102,9 @@ if __name__ == '__main__':
     response = session.get('http://localhost:8000/login')
     email = faker.email()
     generate_user(session, email)
-    l_id = random.choices(lec_ids, k=1).pop()
-    create_answer(session, l_id)
+    create_answer(session, "0")
 
-  res = lookup_answers(session, "0")
+  res = lookup_current_users(session)
   visualize_results(session, res)
 
 
