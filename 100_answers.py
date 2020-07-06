@@ -8,7 +8,7 @@ import random
 from time import perf_counter_ns
 
 admin_key ='0ab1f0f6afc524bb5a36641978aa7d37e017d63e6387cef3324bb57d48154c39'
-responses = 100
+responses = 1
 
 def write_html(page):
   f = open('page.html','w')
@@ -27,18 +27,18 @@ def generate_hash(email):
 
 def generate_user(session, email):
 # register the user
-  apikey_generate = 'http://0.0.0.0:8000/apikey/generate'
+  apikey_generate = 'http://localhost:8000/apikey/generate'
   email_data = {'email' : email}
   session.post(apikey_generate, data=email_data)
 
   # login
   key = generate_hash(email)
-  apikey_check = 'http://0.0.0.0:8000/apikey/check'
+  apikey_check = 'http://localhost:8000/apikey/check'
   login_hash = {'key' : key}
   session.post(apikey_check, login_hash)
 
 def create_answer(session, lec_num):
-  question_url = f'http://0.0.0.0:8000/questions/{lec_num}'
+  question_url = f'http://localhost:8000/questions/{lec_num}'
   session.get(question_url)
   data = {}
   start = perf_counter_ns()
@@ -53,11 +53,11 @@ def create_answer(session, lec_num):
 def add_lecture_and_question(session, lec_id):
   # adding a lecture
   lecture = {'lec_id' : lec_id, 'lec_label' : faker.word()}
-  lec_add = 'http://0.0.0.0:8000/admin/lec/add'
+  lec_add = 'http://localhost:8000/admin/lec/add'
   session.post(lec_add, data=lecture)
 
   # add 1 question
-  lec_addr = f'http://0.0.0.0:8000/admin/lec/{lec_id}'
+  lec_addr = f'http://localhost:8000/admin/lec/{lec_id}'
   session.get(lec_addr)
   data = {}
   for q in range(responses):
@@ -66,20 +66,20 @@ def add_lecture_and_question(session, lec_id):
   session.post(lec_addr, data)
 
   # return to the leclist
-  session.get('http://0.0.0.0:8000/leclist')
+  session.get('http://localhost:8000/leclist')
 
 def lookup_current_users(session):
-  login = 'http://0.0.0.0:8000/apikey/check'
+  login = 'http://localhost:8000/apikey/check'
   login_hash = {'key' : admin_key}
   session.post(login, login_hash)
-  response = session.get(f'http://0.0.0.0:8000/admin/users')
+  response = session.get(f'http://localhost:8000/admin/users')
   return response
 
 def lookup_answers(session, lec_id):
-  login = 'http://0.0.0.0:8000/apikey/check'
+  login = 'http://localhost:8000/apikey/check'
   login_hash = {'key' : admin_key}
   session.post(login, login_hash)
-  response = session.get(f'http://0.0.0.0:8000/answers/{lec_id}')
+  response = session.get(f'http://localhost:8000/answers/{lec_id}')
   return response
 
 def visualize_results(session, response):
@@ -90,22 +90,22 @@ def visualize_results(session, response):
 
 
 if __name__ == '__main__':
-  session = requests.session()
+  session = requests.Session()
   faker = Faker()
 
   generate_user(session, 'ekiziv@brown.edu')
   add_lecture_and_question(session, "0")
 
   #generate 10 random users and each of them with an answer
-  for i in range (100):
+  for i in range (1):
     print("Creating user number:", i)
-    response = session.get('http://0.0.0.0:8000/login')
+    response = session.get('http://localhost:8000/login')
     email = faker.email()
     generate_user(session, email)
     create_answer(session, "0")
 
-  res = lookup_current_users(session)
-  visualize_results(session, res)
+  # res = lookup_current_users(session)
+  # visualize_results(session, res)
 
 
 

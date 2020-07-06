@@ -35,11 +35,11 @@ struct LectureQuestionsContext {
 }
 
 #[derive(Serialize)]
-struct LectureAnswer {
-    id: u64,
-    user: String,
-    answer: String,
-    time: Option<NaiveDateTime>,
+pub struct LectureAnswer {
+    pub id: u64,
+    pub user: String,
+    pub answer: String,
+    pub time: Option<NaiveDateTime>,
 }
 
 #[derive(Serialize)]

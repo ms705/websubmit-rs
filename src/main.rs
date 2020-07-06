@@ -28,7 +28,9 @@ use rocket::response::Redirect;
 use rocket::State;
 use rocket_contrib::templates::Template;
 use std::sync::{Arc, Mutex};
-use std::borrow::BorrowMut;
+
+
+
 
 pub fn new_logger() -> slog::Logger {
     use slog::Drain;
@@ -57,11 +59,12 @@ fn main() {
     use std::path::Path;
 
     let args = args::parse_args();
-    let mut noria = NoriaBackend::new(
+    let noria = NoriaBackend::new(
         &format!("127.0.0.1:2181/{}", args.class),
         Some(new_logger()),
     )
         .unwrap();
+
     let backend = Arc::new(Mutex::new(
         noria,
     ));
@@ -89,6 +92,7 @@ fn main() {
         )
         .mount("/apikey/check", routes![apikey::check])
         .mount("/apikey/generate", routes![apikey::generate])
+        .mount("/apikey/remove_data", routes![apikey::remove_data])
         .mount("/answers", routes![questions::answers])
         .mount("/leclist", routes![questions::leclist])
         .mount("/login", routes![login::login])
@@ -98,5 +102,6 @@ fn main() {
         )
         .mount("/admin/users", routes![admin::get_registered_users])
         .mount("/admin/lec", routes![admin::lec, admin::lec_submit])
+        .mount("/admin", routes![admin::qanswer_for_user, admin::show_answers])
         .launch();
 }

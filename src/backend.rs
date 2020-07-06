@@ -1,3 +1,4 @@
+
 pub use noria::DataType;
 
 use noria::{DurabilityMode, PersistenceParameters};
@@ -14,12 +15,15 @@ pub use noria::manual::Base;
 pub use std::{thread};
 pub use noria::manual::ops::grouped::aggregate::Aggregation;
 pub use noria::NodeIndex;
+pub use noria::manual::OnRemove;
+use std::collections::HashMap;
 
 
 pub struct NoriaBackend {
     pub handle: SyncHandle<LocalAuthority>,
     _log: slog::Logger,
     pub union: Option<NodeIndex>,
+    pub name_to_nodeIndex: HashMap<String, NodeIndex>,
 }
 
 impl NoriaBackend {
@@ -31,6 +35,7 @@ impl NoriaBackend {
 
         let mut b = Builder::default();
         b.set_sharding(None);
+        b.disable_partial();
         b.log_with(log.clone());
         b.set_persistence(PersistenceParameters::new(
             DurabilityMode::MemoryOnly,
@@ -79,6 +84,7 @@ impl NoriaBackend {
             handle: sh,
             _log: log,
             union: None,
+            name_to_nodeIndex: HashMap::default(),
         })
     }
 }

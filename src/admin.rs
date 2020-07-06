@@ -1,3 +1,4 @@
+use crate::questions::LectureAnswer;
 use crate::apikey::get_users_email_keys;
 use crate::apikey::ApiKey;
 use crate::backend::NoriaBackend;
@@ -11,6 +12,7 @@ use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use noria::DataType;
 
 pub(crate) struct Admin;
 
@@ -66,6 +68,20 @@ struct QuestionContext {
     questions: Vec<AddLectureQuestionForm>,
     parent: &'static str,
     lec_id: String,
+}
+
+#[derive(Debug, FromForm, Serialize)]
+pub(crate) struct UserAnswer {
+  email_key: String,
+  q_id: u64,
+}
+
+#[derive(Serialize)]
+pub(crate) struct UserAnswerContext {
+  email_key: String,
+  q_id: u64,
+  answers: Vec<LectureAnswer>,
+  parent: &'static str,
 }
 
 #[get("/")]
@@ -173,3 +189,51 @@ pub(crate) fn get_registered_users(
     };
     Template::render("admin/users", &ctx)
 }
+
+#[post("/answers", data = "<data>")]
+pub(crate) fn qanswer_for_user(
+  _admin: Admin,
+  data: Form<UserAnswer>,
+  ) -> Redirect {
+  println!("I am here");
+  Redirect::to(format!("/admin/answers/{}/{}", data.email_key, data.q_id))
+}
+
+#[get("/answers/<email_key>/<q_id>")]
+pub(crate) fn show_answers(
+  _admin: Admin,
+  email_key: String,
+  q_id: u64,
+  backend: State<Arc<Mutex<NoriaBackend>>>,
+  ) -> Template {
+  println!("hello!!");
+  let mut bg = backend.lock().unwrap();
+  let mut view = bg.handle.view("answers_by_q_and_apikey").unwrap().into_sync();
+  // lookup by email_key and qid
+  let res = view
+        .lookup(&[email_key.clone().into(), q_id.into()], true)
+        .expect("failed to look up the user in answers_by_q_and_apikey");
+
+  let answers: Vec<_> = res
+        .into_iter()
+        .map(|r| LectureAnswer {
+            id: r[2].clone().into(),
+            user: r[0].clone().into(),
+            answer: r[3].clone().into(),
+            time: if let DataType::Timestamp(ts) = r[4] {
+                Some(ts)
+            } else {
+                None
+            },
+        })
+        .collect();
+  let ctx = UserAnswerContext {
+      q_id: q_id,
+      answers: answers,
+      email_key: email_key,
+      parent: "layout",
+  };
+  Template::render("admin/ind_answers", &ctx)
+
+}
+

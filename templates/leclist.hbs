@@ -12,6 +12,11 @@
   {{/each}}
   </ol>
 
+  <h5>Want to remove your data from websubmit?</h5>
+    <form action="/apikey/remove_data" method="post" accept-charset="utf-8">
+      <input type="submit" value="Submit">
+    </form>
+
   {{#if ../admin}}
   <hr />
   Admin:
@@ -23,6 +28,20 @@
       <a href="admin/users">see users</a>
     </li>
   </ul>
+
+  <h1>Check answers from a user</h1>
+  <form action="/admin/answers" method="post" accept-charset="utf-8">
+      <p>
+        <label>email_key<input name="email_key"/></label>
+      </p>
+      <p>
+        <label> q <input name="q_id" />
+        </label>
+      </p>
+      <input type="submit" value="Submit">
+    </form>
+
   {{/if}}
 {{/inline}}
+
 {{~> (parent)~}}
