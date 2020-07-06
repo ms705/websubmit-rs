@@ -1,0 +1,16 @@
+{{#*inline "page"}}
+<h1>Question: {{{ q_id }}} user: {{{ email_key }}} </h1>
+    <table>
+      {{#each answers}}
+      <tr>
+        <td>{{{ this.user }}}</td>
+        <td>{{{ this.id }}}</td>
+        <td id="answer">{{{ this.answer }}}</td>
+        <td id="time">{{{ this.time }}}</td>
+      </tr>
+      {{/each}}
+    </table>
+
+
+{{/inline}}
+{{~> (parent)~}}
