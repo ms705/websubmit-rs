@@ -3,6 +3,11 @@ use crate::config::Config;
 use crate::email;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use noria::manual::ops::project::Project;
+use noria::manual::ops::union::Union;
+use noria::manual::Base;
+use noria::manual::OnRemove;
+use noria::NodeIndex;
 use rocket::http::Status;
 use rocket::http::{Cookie, Cookies};
 use rocket::outcome::IntoOutcome;
@@ -16,12 +21,6 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use noria::manual::Base;
-use noria::manual::ops::project::Project;
-use noria::manual::ops::union::Union;
-use noria::manual::OnRemove;
-use noria::NodeIndex;
-
 
 /// (username, apikey)
 #[derive(Debug)]
@@ -107,8 +106,7 @@ pub(crate) fn check_api_key(
     let res = v.lookup(&[key.into()], true);
     println!("This is users_by_apikey {:?}", v.clone());
 
-
-    match res{
+    match res {
         Ok(rs) => {
             if rs.len() < 1 {
                 Err(ApiKeyError::Missing)
@@ -181,28 +179,52 @@ pub(crate) fn create_user_shard(
     if num_users >= 1 {
         union_index = Some(bg.union.unwrap());
     }
-    let (userinfo, answers, union_index) = bg.handle.migrate( move |mig| {
-        let userinfo = mig.add_base(format!("userinfo_{}",user_email.clone()),
-                                    &["email", "apikey", "is_admin"],
-                                    Base::default().with_key(vec![1]));
-                                    // Base::new_with_remove_option(OnRemove::Anonymize(vec![0, 2])).with_key(vec![1]));
-        let userinfo_from = mig.add_ingredient(format!("userinfo_from_{}", user_email.clone()), &["email", "is_admin", "apikey"], Project::new(userinfo, &[0, 2, 1], Some(vec![0.into()]), None));
+    let (userinfo, answers, union_index) = bg.handle.migrate(move |mig| {
+        let userinfo = mig.add_base(
+            format!("userinfo_{}", user_email.clone()),
+            &["email", "apikey", "is_admin"],
+            Base::default().with_key(vec![1]),
+        );
+        // Base::new_with_remove_option(OnRemove::Anonymize(vec![0, 2])).with_key(vec![1]));
+        let userinfo_from = mig.add_ingredient(
+            format!("userinfo_from_{}", user_email.clone()),
+            &["email", "is_admin", "apikey"],
+            Project::new(userinfo, &[0, 2, 1], Some(vec![0.into()]), None),
+        );
         mig.maintain_anonymous(userinfo_from, &[3]);
 
-        let answers = mig.add_base(format!("answers_{}",user_email.clone()),
-                                   &["email_key", "lec", "q", "answer", "submitted_at"],
-                                   Base::default().with_key(vec![1, 2]));
-                                   // Base::new_with_remove_option(OnRemove::Anonymize(vec![0, 4])).with_key(vec![1, 2]));
-        let my_answers_for_lec = mig.add_ingredient(format!("my_answers_for_lec_{}", user_email.clone()), &["email_key", "lec", "q", "answer"], Project::new(answers, &[0, 1, 2, 3], None, None));
-        mig.maintain_anonymous( my_answers_for_lec, &[1]);
+        let answers = mig.add_base(
+            format!("answers_{}", user_email.clone()),
+            &["email_key", "lec", "q", "answer", "submitted_at"],
+            Base::default().with_key(vec![1, 2]),
+        );
+        // Base::new_with_remove_option(OnRemove::Anonymize(vec![0, 4])).with_key(vec![1, 2]));
+        let my_answers_for_lec = mig.add_ingredient(
+            format!("my_answers_for_lec_{}", user_email.clone()),
+            &["email_key", "lec", "q", "answer"],
+            Project::new(answers, &[0, 1, 2, 3], None, None),
+        );
+        mig.maintain_anonymous(my_answers_for_lec, &[1]);
 
         if num_users == 0 {
             let mut emits = HashMap::new();
             emits.insert(answers, vec![0, 1, 2, 3, 4]);
             let u = Union::new(emits);
-            let answers_union = mig.add_ingredient("answers_union", &["email_key", "lec", "q", "answer", "submitted_at"], u);
-            let answers_by_lec = mig.add_ingredient("answers_by_lec", &["email_key", "lec", "q", "answer", "submitted_at"], Project::new(answers_union, &[0, 1, 2, 3, 4], None, None));
-            let answers_by_q_and_apikey = mig.add_ingredient("answers_by_q_and_apikey", &["email_key", "lec", "q", "answer", "submitted_at"], Project::new(answers_union, &[0, 1, 2, 3, 4], None, None));
+            let answers_union = mig.add_ingredient(
+                "answers_union",
+                &["email_key", "lec", "q", "answer", "submitted_at"],
+                u,
+            );
+            let answers_by_lec = mig.add_ingredient(
+                "answers_by_lec",
+                &["email_key", "lec", "q", "answer", "submitted_at"],
+                Project::new(answers_union, &[0, 1, 2, 3, 4], None, None),
+            );
+            let answers_by_q_and_apikey = mig.add_ingredient(
+                "answers_by_q_and_emailkey",
+                &["email_key", "lec", "q", "answer", "submitted_at"],
+                Project::new(answers_union, &[0, 1, 2, 3, 4], None, None),
+            );
             mig.maintain_anonymous(answers_by_lec, &[1]);
             mig.maintain_anonymous(answers_by_q_and_apikey, &[0, 2]);
             (userinfo, answers, Some(answers_union))
@@ -210,10 +232,13 @@ pub(crate) fn create_user_shard(
             mig.add_parent(answers, union_index.unwrap(), vec![0, 1, 2, 3, 4]);
             (userinfo, answers, union_index)
         }
-
     });
-    bg.name_to_nodeIndex.entry(format!("userinfo_{}",new_user_email.clone())).or_insert(userinfo);
-    bg.name_to_nodeIndex.entry(format!("answers_{}",new_user_email.clone())).or_insert(answers);
+    bg.name_to_nodeIndex
+        .entry(format!("userinfo_{}", new_user_email.clone()))
+        .or_insert(userinfo);
+    bg.name_to_nodeIndex
+        .entry(format!("answers_{}", new_user_email.clone()))
+        .or_insert(answers);
     println!("bg.name_to_index is {:?}", bg.name_to_nodeIndex.clone());
 
     if num_users == 0 {
@@ -233,11 +258,7 @@ pub(crate) fn create_user_shard(
 pub(crate) fn get_users_email_keys(
     bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
 ) -> Vec<String> {
-    let mut users_table = bg
-        .handle
-        .view("all_users")
-        .unwrap()
-        .into_sync();
+    let mut users_table = bg.handle.view("all_users").unwrap().into_sync();
 
     let res = users_table.lookup(&[(0 as u64).into()], true).unwrap();
     let email_keys: Vec<String> = res
@@ -291,24 +312,32 @@ pub(crate) fn remove_data(
         .unwrap();
     let now = Instant::now();
     let bg = &mut backend.lock().unwrap();
-    let userinfo_table_name = format!("userinfo_{}",apikey.user);
-    let answers_table_name = format!("answers_{}",apikey.user);
+    let userinfo_table_name = format!("userinfo_{}", apikey.user);
+    let answers_table_name = format!("answers_{}", apikey.user);
 
-    let info_ni = bg.name_to_nodeIndex.get(&userinfo_table_name).expect("failed to fetch the ni of userinfo").clone();
-    let answers_ni = bg.name_to_nodeIndex.get(&answers_table_name).expect("failed to fetch the ni of answers").clone();
+    let info_ni = bg
+        .name_to_nodeIndex
+        .get(&userinfo_table_name)
+        .expect("failed to fetch the ni of userinfo")
+        .clone();
+    let answers_ni = bg
+        .name_to_nodeIndex
+        .get(&answers_table_name)
+        .expect("failed to fetch the ni of answers")
+        .clone();
 
-    bg.handle.remove_base(info_ni).expect("failed to remove base userinfo");
-    bg.handle.remove_base(answers_ni).expect("failed to remove base answers");
+    bg.handle
+        .remove_base(info_ni)
+        .expect("failed to remove base userinfo");
+    bg.handle
+        .remove_base(answers_ni)
+        .expect("failed to remove base answers");
 
     let to_write = &format!("{}\n", now.elapsed().as_millis());
     write!(&mut file, "{}", to_write);
-
-    println!("{:?}", bg.handle.statistics());
 
     let mut ctx = HashMap::new();
     ctx.insert("CLASS_ID", config.class.clone());
     ctx.insert("parent", String::from("layout"));
     Template::render("login", &ctx)
 }
-
-

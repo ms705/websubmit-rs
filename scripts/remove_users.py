@@ -18,7 +18,7 @@ responses = 100 #might need to tune this!
 users = list()
 start_times = {}
 end_times = {}
-NUM_USERS = 50
+NUM_USERS = 60
 users_by_apikey = {}
 submitted = {}
 
@@ -168,15 +168,24 @@ if __name__ == '__main__':
     apikey = generate_hash(email)
     generate_user(users_session, email, apikey)
     users_by_apikey[apikey] = email_key
-  with open("info.txt", 'w') as f:
-    for api, email_key in users_by_apikey.items()
-      f.write(f'{email_key}\n')
+
+  i = 0;
+  f_info = open("info.txt", 'w')
+  f_un = open("un.txt", 'w')
+  for api, email_key in users_by_apikey.items():
+    if i < NUM_USERS-20:
+      f_info.write(f'{email_key}\n')
+    else:
+      f_un.write(f'{api}\n')
+    i += 1
+  print(users_by_apikey)
+
   y = threading.Thread(target=constant_load, args=(users_session, ))
   z = threading.Thread(target=unregister, args=(unregister_session,))
 
-  x.start()
-  y.start()
-  z.start()
+  # x.start()
+  # y.start()
+  # z.start()
 
 
 

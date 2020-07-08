@@ -17,10 +17,12 @@ pub use noria::manual::ops::grouped::aggregate::Aggregation;
 pub use noria::NodeIndex;
 pub use noria::manual::OnRemove;
 use std::collections::HashMap;
+use std::sync::{Arc};
+use noria::{ZookeeperAuthority};
 
 
 pub struct NoriaBackend {
-    pub handle: SyncHandle<LocalAuthority>,
+    pub handle: SyncHandle<ZookeeperAuthority>,
     _log: slog::Logger,
     pub union: Option<NodeIndex>,
     pub name_to_nodeIndex: HashMap<String, NodeIndex>,
@@ -40,12 +42,18 @@ impl NoriaBackend {
         b.set_persistence(PersistenceParameters::new(
             DurabilityMode::MemoryOnly,
             Duration::from_millis(1),
-            Some(String::from("websubmit")),
+            Some(String::from("hello")),
             1,
         ));
-
-        let mut sh = b.start_simple().unwrap();
-        thread::sleep( Duration::from_millis(200));
+        // let zk = ZooKeeper::connect(zk_addr, Duration::from_secs(1), |_| {}).unwrap();
+        // let _ = zk.delete("/hello", None);
+        let authority: Arc<ZookeeperAuthority> = Arc::new(ZookeeperAuthority::new(zk_addr).unwrap());
+        let mut rt = tokio::runtime::Runtime::new().unwrap();
+        let fut = b.start(authority);
+        let wh = rt.block_on(fut).unwrap();
+        thread::sleep(Duration::from_millis(200));
+        let mut sh = SyncHandle::from_existing(rt, wh);
+        thread::sleep(Duration::from_millis(200));
 
         let _ = sh.migrate(move |mig| {
             let users = mig.add_base("users", &["email_key", "apikey"], Base::new(vec![]).with_key(vec![1]));
