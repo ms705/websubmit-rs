@@ -1,6 +1,7 @@
 use crate::backend::NoriaBackend;
 use crate::config::Config;
 use crate::email;
+use chrono::Local;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use noria::manual::ops::project::Project;
@@ -308,9 +309,9 @@ pub(crate) fn remove_data(
     let mut file = OpenOptions::new()
         .append(true)
         .create(true)
-        .open("remove_user.txt")
+        .open("un_times.txt")
         .unwrap();
-    let now = Instant::now();
+    let start = Local::now().naive_local();
     let bg = &mut backend.lock().unwrap();
     let userinfo_table_name = format!("userinfo_{}", apikey.user);
     let answers_table_name = format!("answers_{}", apikey.user);
@@ -333,8 +334,8 @@ pub(crate) fn remove_data(
         .remove_base(answers_ni)
         .expect("failed to remove base answers");
 
-    let to_write = &format!("{}\n", now.elapsed().as_millis());
-    write!(&mut file, "{}", to_write);
+    let to_write = &format!("{:?}#{:?}\n", start, Local::now().naive_local());
+    write!(&mut file, "{}", to_write).expect("failed to write to un_times.txt");
 
     let mut ctx = HashMap::new();
     ctx.insert("CLASS_ID", config.class.clone());

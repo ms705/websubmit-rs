@@ -18,9 +18,10 @@ responses = 100 #might need to tune this!
 users = list()
 start_times = {}
 end_times = {}
-NUM_USERS = 60
+NUM_USERS = 50
 users_by_apikey = {}
 submitted = {}
+UNSUB = 10
 
 stack = queue.Queue() # should be sync
 
@@ -173,12 +174,10 @@ if __name__ == '__main__':
   f_info = open("info.txt", 'w')
   f_un = open("un.txt", 'w')
   for api, email_key in users_by_apikey.items():
-    if i < NUM_USERS-20:
-      f_info.write(f'{email_key}\n')
-    else:
+    if i >= (NUM_USERS - UNSUB):
       f_un.write(f'{api}\n')
+    f_info.write(f'{email_key}\n')
     i += 1
-  print(users_by_apikey)
 
   y = threading.Thread(target=constant_load, args=(users_session, ))
   z = threading.Thread(target=unregister, args=(unregister_session,))
