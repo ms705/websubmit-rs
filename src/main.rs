@@ -29,9 +29,6 @@ use rocket::State;
 use rocket_contrib::templates::Template;
 use std::sync::{Arc, Mutex};
 
-
-
-
 pub fn new_logger() -> slog::Logger {
     use slog::Drain;
     use slog::Logger;
@@ -63,11 +60,9 @@ fn main() {
         &format!("127.0.0.1:2181/{}", args.class),
         Some(new_logger()),
     )
-        .unwrap();
+    .unwrap();
 
-    let backend = Arc::new(Mutex::new(
-        noria,
-    ));
+    let backend = Arc::new(Mutex::new(noria));
 
     let config = args.config;
 
@@ -91,6 +86,7 @@ fn main() {
             routes![questions::questions, questions::questions_submit],
         )
         .mount("/apikey/check", routes![apikey::check])
+        .mount("/apikey/resubscribe", routes![apikey::resubscribe])
         .mount("/apikey/generate", routes![apikey::generate])
         .mount("/apikey/remove_data", routes![apikey::remove_data])
         .mount("/answers", routes![questions::answers])
@@ -102,6 +98,9 @@ fn main() {
         )
         .mount("/admin/users", routes![admin::get_registered_users])
         .mount("/admin/lec", routes![admin::lec, admin::lec_submit])
-        .mount("/admin", routes![admin::qanswer_for_user, admin::show_answers])
+        .mount(
+            "/admin",
+            routes![admin::qanswer_for_user, admin::show_answers],
+        )
         .launch();
 }

@@ -12,7 +12,9 @@ rm start_times.txt
 rm results.txt
 rm intervals.txt
 rm un_times.txt
+rm re_times.txt
+rm imported_data.txt
 
-RUST_BACKTRACE=1 cargo run -- -i hello
+RUST_BACKTRACE=full cargo run -- -i hello
 # &> run.txt
 

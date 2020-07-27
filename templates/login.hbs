@@ -20,5 +20,20 @@
     </label>
     <input type="submit" value="Submit">
   </form>
+  <h5>Resubscribe</h5>
+  <form action="/apikey/resubscribe" method="post" accept-charset="utf-8">
+    <label>Key:
+      <p>
+      <input name="key" />
+      </p>
+      </label>
+      <label>Previously imported data:
+      <p>
+      <input name="data" />
+      </p>
+      </label>
+
+    <input type="submit" value="Submit">
+  </form>
 {{/inline}}
 {{~> (parent)~}}

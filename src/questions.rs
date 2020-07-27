@@ -20,7 +20,7 @@ pub(crate) struct LectureQuestionSubmission {
     answers: Vec<(u64, String)>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Debug)]
 struct LectureQuestion {
     id: u64,
     prompt: String,
@@ -168,7 +168,6 @@ pub(crate) fn questions(
         let atext: String = r[3].clone().into();
         answers.insert(id, atext);
     }
-
     let res = qh
         .lookup(&[key], true)
         .expect("lecture questions lookup failed");
@@ -176,11 +175,16 @@ pub(crate) fn questions(
         .into_iter()
         .map(|r| {
             let id: u64 = r[1].clone().into();
-            let answer = answers.get(&id).map(|s| s.to_owned());
+            let answer = match answers.get(&id) {
+                Some(a) => a,
+                None => "None",
+            }
+            .to_owned();
+
             LectureQuestion {
                 id: id,
                 prompt: r[2].clone().into(),
-                answer: answer,
+                answer: Some(answer),
             }
         })
         .collect();

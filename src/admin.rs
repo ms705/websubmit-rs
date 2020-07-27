@@ -1,18 +1,20 @@
-use crate::questions::LectureAnswer;
 use crate::apikey::get_users_email_keys;
 use crate::apikey::ApiKey;
 use crate::backend::NoriaBackend;
 use crate::config::Config;
+use crate::questions::LectureAnswer;
+use noria::DataType;
 use rocket::http::Status;
 use rocket::outcome::IntoOutcome;
 use rocket::request::Form;
+
+use rocket::request::FromForm;
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::Redirect;
 use rocket::State;
 use rocket_contrib::templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use noria::DataType;
 
 pub(crate) struct Admin;
 
@@ -38,7 +40,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
     }
 }
 
-#[derive(Debug, FromForm, Serialize)]
+#[derive(Debug, Serialize, Clone, FromForm)]
 pub(crate) struct AddLectureQuestionForm {
     q_id: u64,
     q_prompt: String,
@@ -65,23 +67,29 @@ struct UserContext {
 
 #[derive(Serialize)]
 struct QuestionContext {
-    questions: Vec<AddLectureQuestionForm>,
+    questions: Vec<LectureQuestion>,
     parent: &'static str,
     lec_id: String,
 }
 
 #[derive(Debug, FromForm, Serialize)]
 pub(crate) struct UserAnswer {
-  email_key: String,
-  q_id: u64,
+    email_key: String,
+    q_id: u64,
 }
 
 #[derive(Serialize)]
 pub(crate) struct UserAnswerContext {
-  email_key: String,
-  q_id: u64,
-  answers: Vec<LectureAnswer>,
-  parent: &'static str,
+    email_key: String,
+    q_id: u64,
+    answers: Vec<LectureAnswer>,
+    parent: &'static str,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub(crate) struct LectureQuestion {
+    q_id: u64,
+    q_prompt: String,
 }
 
 #[get("/")]
@@ -119,7 +127,7 @@ pub(crate) fn lec(_adm: Admin, num: i64, backend: State<Arc<Mutex<NoriaBackend>>
         .expect("failed to look up the user in a personal table");
     let curr_questions: Vec<_> = lookup
         .into_iter()
-        .map(|r| AddLectureQuestionForm {
+        .map(|r| LectureQuestion {
             q_id: r[1].clone().into(),
             q_prompt: r[2].clone().into(),
         })
@@ -191,30 +199,29 @@ pub(crate) fn get_registered_users(
 }
 
 #[post("/answers", data = "<data>")]
-pub(crate) fn qanswer_for_user(
-  _admin: Admin,
-  data: Form<UserAnswer>,
-  ) -> Redirect {
-  println!("I am here");
-  Redirect::to(format!("/admin/answers/{}/{}", data.email_key, data.q_id))
+pub(crate) fn qanswer_for_user(_admin: Admin, data: Form<UserAnswer>) -> Redirect {
+    Redirect::to(format!("/admin/answers/{}/{}", data.email_key, data.q_id))
 }
 
 #[get("/answers/<email_key>/<q_id>")]
 pub(crate) fn show_answers(
-  _admin: Admin,
-  email_key: String,
-  q_id: u64,
-  backend: State<Arc<Mutex<NoriaBackend>>>,
-  ) -> Template {
-  println!("hello!!");
-  let mut bg = backend.lock().unwrap();
-  let mut view = bg.handle.view("answers_by_q_and_apikey").unwrap().into_sync();
-  // lookup by email_key and qid
-  let res = view
+    _admin: Admin,
+    email_key: String,
+    q_id: u64,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+) -> Template {
+    let mut bg = backend.lock().unwrap();
+    let mut view = bg
+        .handle
+        .view("answers_by_q_and_apikey")
+        .unwrap()
+        .into_sync();
+    // lookup by email_key and qid
+    let res = view
         .lookup(&[email_key.clone().into(), q_id.into()], true)
         .expect("failed to look up the user in answers_by_q_and_apikey");
 
-  let answers: Vec<_> = res
+    let answers: Vec<_> = res
         .into_iter()
         .map(|r| LectureAnswer {
             id: r[2].clone().into(),
@@ -227,13 +234,11 @@ pub(crate) fn show_answers(
             },
         })
         .collect();
-  let ctx = UserAnswerContext {
-      q_id: q_id,
-      answers: answers,
-      email_key: email_key,
-      parent: "layout",
-  };
-  Template::render("admin/ind_answers", &ctx)
-
+    let ctx = UserAnswerContext {
+        q_id: q_id,
+        answers: answers,
+        email_key: email_key,
+        parent: "layout",
+    };
+    Template::render("admin/ind_answers", &ctx)
 }
-

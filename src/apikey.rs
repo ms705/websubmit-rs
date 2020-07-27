@@ -7,8 +7,7 @@ use crypto::sha2::Sha256;
 use noria::manual::ops::project::Project;
 use noria::manual::ops::union::Union;
 use noria::manual::Base;
-use noria::manual::OnRemove;
-use noria::NodeIndex;
+
 use rocket::http::Status;
 use rocket::http::{Cookie, Cookies};
 use rocket::outcome::IntoOutcome;
@@ -21,7 +20,6 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 /// (username, apikey)
 #[derive(Debug)]
@@ -38,6 +36,12 @@ pub(crate) struct ApiKeyRequest {
 #[derive(Debug, FromForm)]
 pub(crate) struct ApiKeySubmit {
     key: String,
+}
+
+#[derive(Debug, FromForm)]
+pub(crate) struct ResubscribeSubmit {
+    key: String,
+    data: String,
 }
 
 #[derive(Debug)]
@@ -152,13 +156,56 @@ pub(crate) fn check(
     }
 }
 
+#[post("/", data = "<data>")]
+pub(crate) fn resubscribe(
+    data: Form<ResubscribeSubmit>,
+    mut cookies: Cookies,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+) -> Redirect {
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("re_times.txt")
+        .unwrap();
+    let start = Local::now().naive_local();
+
+    {
+        let mut bg = backend.lock().unwrap();
+        bg.handle
+            .import_data(data.data.clone().to_string())
+            .expect("failed to import data");
+    }
+    let res = check_api_key(&*backend, &data.key);
+    match res {
+        Err(ApiKeyError::BackendFailure(ref err)) => {
+            eprintln!("Problem communicating with Noria: {:?}", err);
+        }
+        Err(ApiKeyError::Missing) => {
+            eprintln!("No such API key: {}", data.key);
+        }
+        Err(ApiKeyError::Ambiguous) => {
+            eprintln!("Ambiguous API key: {}", data.key);
+        }
+        Ok(_) => (),
+    }
+    let time = &format!("{:?}#{:?}\n", start, Local::now().naive_local());
+    write!(&mut file, "{}", time).expect("failed to write to un_times.txt");
+
+    if res.is_err() {
+        Redirect::to("/")
+    } else {
+        let cookie = Cookie::build("apikey", data.key.clone()).path("/").finish();
+        cookies.add(cookie);
+        Redirect::to("/leclist")
+    }
+}
+
 pub(crate) fn create_user_shard(
     bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
     email: String,
     hash: &str,
     config: &State<Config>,
 ) {
-    let now = Instant::now();
     let new_user_email = email.split('@').take(1).collect::<Vec<_>>()[0].to_string();
     let is_admin = if config.staff.contains(&new_user_email) {
         1
@@ -186,7 +233,6 @@ pub(crate) fn create_user_shard(
             &["email", "apikey", "is_admin"],
             Base::default().with_key(vec![1]),
         );
-        // Base::new_with_remove_option(OnRemove::Anonymize(vec![0, 2])).with_key(vec![1]));
         let userinfo_from = mig.add_ingredient(
             format!("userinfo_from_{}", user_email.clone()),
             &["email", "is_admin", "apikey"],
@@ -311,6 +357,12 @@ pub(crate) fn remove_data(
         .create(true)
         .open("un_times.txt")
         .unwrap();
+    let mut data = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("imported_data.txt")
+        .unwrap();
+
     let start = Local::now().naive_local();
     let bg = &mut backend.lock().unwrap();
     let userinfo_table_name = format!("userinfo_{}", apikey.user);
@@ -327,6 +379,10 @@ pub(crate) fn remove_data(
         .expect("failed to fetch the ni of answers")
         .clone();
 
+    let data_string = bg
+        .handle
+        .get_data(vec![info_ni, answers_ni])
+        .expect("failed to get data from Noria");
     bg.handle
         .remove_base(info_ni)
         .expect("failed to remove base userinfo");
@@ -334,8 +390,10 @@ pub(crate) fn remove_data(
         .remove_base(answers_ni)
         .expect("failed to remove base answers");
 
-    let to_write = &format!("{:?}#{:?}\n", start, Local::now().naive_local());
-    write!(&mut file, "{}", to_write).expect("failed to write to un_times.txt");
+    let time = &format!("{:?}#{:?}\n", start, Local::now().naive_local());
+    write!(&mut file, "{}", time).expect("failed to write to un_times.txt");
+    let data_write = &format!("{:?}*{}\n", apikey.key, data_string);
+    write!(&mut data, "{}", data_write).expect("failed to write imported data");
 
     let mut ctx = HashMap::new();
     ctx.insert("CLASS_ID", config.class.clone());
