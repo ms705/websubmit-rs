@@ -37,7 +37,7 @@ impl NoriaBackend {
         b.disable_partial();
         b.log_with(log.clone());
         b.set_persistence(PersistenceParameters::new(
-            DurabilityMode::MemoryOnly,
+            DurabilityMode::DeleteOnExit,
             Duration::from_millis(1),
             Some(String::from("hello")),
             1,

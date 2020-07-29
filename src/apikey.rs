@@ -221,7 +221,6 @@ pub(crate) fn create_user_shard(
         .expect("failed to insert user!");
 
     let user_email = new_user_email.clone();
-    println!("After inserting into users");
 
     let mut union_index = None;
     if num_users >= 1 {
@@ -231,7 +230,9 @@ pub(crate) fn create_user_shard(
         let userinfo = mig.add_base(
             format!("userinfo_{}", user_email.clone()),
             &["email", "apikey", "is_admin"],
-            Base::default().with_key(vec![1]),
+            Base::default()
+                .with_key(vec![1])
+                .anonymize_with_resub_key(vec![1]),
         );
         let userinfo_from = mig.add_ingredient(
             format!("userinfo_from_{}", user_email.clone()),
@@ -243,9 +244,10 @@ pub(crate) fn create_user_shard(
         let answers = mig.add_base(
             format!("answers_{}", user_email.clone()),
             &["email_key", "lec", "q", "answer", "submitted_at"],
-            Base::default().with_key(vec![1, 2]),
+            Base::default()
+                .with_key(vec![1, 2])
+                .anonymize_with_resub_key(vec![3]),
         );
-        // Base::new_with_remove_option(OnRemove::Anonymize(vec![0, 4])).with_key(vec![1, 2]));
         let my_answers_for_lec = mig.add_ingredient(
             format!("my_answers_for_lec_{}", user_email.clone()),
             &["email_key", "lec", "q", "answer"],
