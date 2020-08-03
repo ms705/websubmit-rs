@@ -35,7 +35,7 @@ impl NoriaBackend {
         let mut b = Builder::default();
         b.set_sharding(None);
         b.disable_partial();
-        b.log_with(log.clone());
+        // b.log_with(log.clone());
         b.set_persistence(PersistenceParameters::new(
             DurabilityMode::DeleteOnExit,
             Duration::from_millis(1),
@@ -52,6 +52,7 @@ impl NoriaBackend {
         thread::sleep(Duration::from_millis(200));
         let mut sh = SyncHandle::from_existing(rt, wh);
         thread::sleep(Duration::from_millis(200));
+        b.create_global_table(&mut sh, "shards", &["name", "node_index"], vec![1]);
 
         let _ = sh.migrate(move |mig| {
             let users = mig.add_base(

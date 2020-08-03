@@ -126,6 +126,27 @@ pub(crate) fn check_api_key(
     }
 }
 
+pub(crate) fn check_key(bg: &mut NoriaBackend, untrimmed: &str) -> Result<String, ApiKeyError> {
+    let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
+    let key = untrimmed.to_string().trim_matches('\"').to_string();
+    println!("Looking at this apikey {:?}", key.clone());
+    let res = v.lookup(&[key.into()], true);
+
+    match res {
+        Ok(rs) => {
+            if rs.len() < 1 {
+                Err(ApiKeyError::Missing)
+            } else if rs.len() > 1 {
+                Err(ApiKeyError::Ambiguous)
+            } else {
+                // user email
+                Ok((&rs[0][0]).into())
+            }
+        }
+        Err(e) => Err(ApiKeyError::BackendFailure(e)),
+    }
+}
+
 #[post("/", data = "<data>")]
 pub(crate) fn check(
     data: Form<ApiKeySubmit>,
@@ -133,7 +154,8 @@ pub(crate) fn check(
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Redirect {
     // check that the API key exists and set cookie
-    let res = check_api_key(&*backend, &data.key);
+    let key = data.key.trim_matches('\"').to_string();
+    let res = check_api_key(&*backend, &key);
     match res {
         Err(ApiKeyError::BackendFailure(ref err)) => {
             eprintln!("Problem communicating with Noria: {:?}", err);
@@ -169,13 +191,12 @@ pub(crate) fn resubscribe(
         .unwrap();
     let start = Local::now().naive_local();
 
-    {
-        let mut bg = backend.lock().unwrap();
-        bg.handle
-            .import_data(data.data.clone().to_string())
-            .expect("failed to import data");
-    }
-    let res = check_api_key(&*backend, &data.key);
+    let mut bg = backend.lock().unwrap();
+    bg.handle
+        .import_data(data.data.clone().to_string())
+        .expect("failed to import data");
+
+    let res = check_key(&mut bg, &data.key);
     match res {
         Err(ApiKeyError::BackendFailure(ref err)) => {
             eprintln!("Problem communicating with Noria: {:?}", err);
@@ -288,7 +309,6 @@ pub(crate) fn create_user_shard(
     bg.name_to_nodeIndex
         .entry(format!("answers_{}", new_user_email.clone()))
         .or_insert(answers);
-    println!("bg.name_to_index is {:?}", bg.name_to_nodeIndex.clone());
 
     if num_users == 0 {
         bg.union = union_index;
@@ -386,10 +406,10 @@ pub(crate) fn remove_data(
         .get_data(vec![info_ni, answers_ni])
         .expect("failed to get data from Noria");
     bg.handle
-        .remove_base(info_ni)
+        .unsubscribe(info_ni)
         .expect("failed to remove base userinfo");
     bg.handle
-        .remove_base(answers_ni)
+        .unsubscribe(answers_ni)
         .expect("failed to remove base answers");
 
     let time = &format!("{:?}#{:?}\n", start, Local::now().naive_local());
