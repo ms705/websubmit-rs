@@ -14,6 +14,7 @@ rm intervals.txt
 rm un_times.txt
 rm re_times.txt
 rm imported_data.txt
+rm info.txt
 
 RUST_BACKTRACE=full cargo run -- -i hello
 # &> run.txt

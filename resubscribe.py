@@ -1,9 +1,5 @@
 import requests
 
-def resubscribe(session):
-  session.get('http://localhost:8000/leclist')
-  session.post('http://localhost:8000/apikey/remove_data')
-
 if __name__ == '__main__':
   session = requests.Session()
   users = set()

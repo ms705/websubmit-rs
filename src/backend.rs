@@ -35,7 +35,7 @@ impl NoriaBackend {
         let mut b = Builder::default();
         b.set_sharding(None);
         b.disable_partial();
-        // b.log_with(log.clone());
+        b.log_with(log.clone());
         b.set_persistence(PersistenceParameters::new(
             DurabilityMode::DeleteOnExit,
             Duration::from_millis(1),

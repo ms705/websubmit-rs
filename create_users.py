@@ -3,7 +3,7 @@ from faker import Faker
 import hashlib
 
 admin_key ='0ab1f0f6afc524bb5a36641978aa7d37e017d63e6387cef3324bb57d48154c39'
-responses = 10
+responses = 1
 users_by_apikey = {}
 NUM_USERS = 50
 UNSUB = 10
@@ -73,12 +73,12 @@ if __name__ == '__main__':
 
 
   i = 0;
-  f_info = open("info.txt", 'w')
+  # f_info = open("info.txt", 'w')
   f_un = open("un.txt", 'w')
   for api, email_key in users_by_apikey.items():
     if i >= (NUM_USERS - UNSUB):
       f_un.write(f'{api}\n')
-    f_info.write(f'{email_key}\n')
+    # f_info.write(f'{email_key}\n')
     i += 1
 
 

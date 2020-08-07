@@ -107,7 +107,6 @@ pub(crate) fn check_api_key(
 ) -> Result<String, ApiKeyError> {
     let mut bg = backend.lock().unwrap();
     let mut v = bg.handle.view("users_by_apikey").unwrap().into_sync();
-    println!("Looking up the following key: {:?}", key);
     let res = v.lookup(&[key.into()], true);
     println!("This is users_by_apikey {:?}", v.clone());
 
@@ -322,6 +321,13 @@ pub(crate) fn create_user_shard(
     userinfo_table
         .insert(vec![email.into(), hash.into(), is_admin.into()])
         .expect("failed to insert userinfo");
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("info.txt")
+        .unwrap();
+    let info = format!("{}*{:?}\n", new_user_email, answers.index());
+    write!(&mut file, "{}", info).expect("failed to write to un_times.txt");
 }
 
 pub(crate) fn get_users_email_keys(
@@ -403,13 +409,13 @@ pub(crate) fn remove_data(
 
     let data_string = bg
         .handle
-        .get_data(vec![info_ni, answers_ni])
+        .export_data(vec![(info_ni.index() as u32), (answers_ni.index() as u32)])
         .expect("failed to get data from Noria");
     bg.handle
-        .unsubscribe(info_ni)
+        .unsubscribe(info_ni.index() as u32)
         .expect("failed to remove base userinfo");
     bg.handle
-        .unsubscribe(answers_ni)
+        .unsubscribe(answers_ni.index() as u32)
         .expect("failed to remove base answers");
 
     let time = &format!("{:?}#{:?}\n", start, Local::now().naive_local());
