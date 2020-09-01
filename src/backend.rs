@@ -97,14 +97,14 @@ impl NoriaBackend {
 
             let lecture = mig.add_ingredient(
                 "lecture",
-                &["id", "label"],
+                &["id", "label", "bogokey"],
                 Project::new(lectures, &[0, 1], Some(vec![0.into()]), None),
             );
             mig.maintain_anonymous(lecture, &[2]);
 
             let qs_by_lec = mig.add_ingredient(
                 "qs_by_lec",
-                &["lec", "q", "question"],
+                &["lec", "q", "question", "bogokey"],
                 Project::new(questions, &[0, 1, 2], Some(vec![0.into()]), None),
             );
             mig.maintain_anonymous(qs_by_lec, &[0]);
@@ -118,7 +118,7 @@ impl NoriaBackend {
 
             let all_users = mig.add_ingredient(
                 "all_users",
-                &["email_key"],
+                &["email_key", "bogokey"],
                 Project::new(users, &[0], Some(vec![0.into()]), None),
             );
             mig.maintain_anonymous(all_users, &[1]);

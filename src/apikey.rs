@@ -256,7 +256,7 @@ pub(crate) fn create_user_shard(
         );
         let userinfo_from = mig.add_ingredient(
             format!("userinfo_from_{}", user_email.clone()),
-            &["email", "is_admin", "apikey"],
+            &["email", "is_admin", "apikey", "bogokey"],
             Project::new(userinfo, &[0, 2, 1], Some(vec![0.into()]), None),
         );
         mig.maintain_anonymous(userinfo_from, &[3]);
