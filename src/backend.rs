@@ -26,7 +26,7 @@ pub struct NoriaBackend {
 }
 
 impl NoriaBackend {
-    pub fn new(zk_addr: &str, log: Option<slog::Logger>) -> Result<Self, std::io::Error> {
+    pub fn new(zk_addr: &str, class: &str, log: Option<slog::Logger>) -> Result<Self, std::io::Error> {
         let log = match log {
             None => slog::Logger::root(slog::Discard, o!()),
             Some(l) => l,
@@ -39,7 +39,7 @@ impl NoriaBackend {
         b.set_persistence(PersistenceParameters::new(
             DurabilityMode::DeleteOnExit,
             Duration::from_millis(1),
-            Some(String::from("hello")),
+            Some(String::from(class)),
             1,
         ));
         // let zk = ZooKeeper::connect(zk_addr, Duration::from_secs(1), |_| {}).unwrap();

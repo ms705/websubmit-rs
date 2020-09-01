@@ -58,6 +58,7 @@ fn main() {
     let args = args::parse_args();
     let noria = NoriaBackend::new(
         &format!("127.0.0.1:2181/{}", args.class),
+        &args.class,
         Some(new_logger()),
     )
     .unwrap();
