@@ -5,7 +5,10 @@
       {{#each questions}}
       <label>{{{ this.prompt }}}:
         <p>
-        <textarea name="q_{{{ this.id }}}" rows="10" cols="80">Write something here.</textarea>
+        <textarea name="q_{{{ this.id }}}" rows="10" cols="80"
+         {{#if this.answer}} disabled
+         {{else}} placeholder="Write something here."
+         {{/if}}>{{{ this.answer }}}</textarea>
         </p>
       </label>
       {{/each}}
