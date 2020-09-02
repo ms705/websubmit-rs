@@ -1,4 +1,5 @@
 use crate::admin::Admin;
+use crate::apikey::trim_email;
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
 use crate::config::Config;
@@ -153,21 +154,23 @@ pub(crate) fn questions(
     let key: DataType = (num as u64).into();
 
     let mut bg = backend.lock().unwrap();
-    let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
 
     // Fetch my answers for the lecture
-    let view_name = &format!("my_answers_for_lec_{}", apikey.user);
+    let view_name = &format!("my_answers_for_lec_{}", trim_email(apikey.user));
     let mut ah = bg.handle.view(view_name).unwrap().into_sync();
     let answers_res = ah
         .lookup(&[(num as u64).into()], true)
         .expect("my_answers_for_lec lookup failed");
-    let mut answers = HashMap::new();
+    let answers: HashMap<u64, String> = answers_res
+        .into_iter()
+        .map(|r| {
+            let id = r[2].clone().into();
+            let answer_text = r[3].clone().into();
+            (id, answer_text)
+        })
+        .collect();
 
-    for r in answers_res {
-        let id: u64 = r[2].clone().into();
-        let atext: String = r[3].clone().into();
-        answers.insert(id, atext);
-    }
+    let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
     let res = qh
         .lookup(&[key], true)
         .expect("lecture questions lookup failed");
@@ -241,13 +244,13 @@ pub(crate) fn questions_submit(
     let num: DataType = (num as u64).into();
     let ts: DataType = DataType::Timestamp(Local::now().naive_local());
 
-    let email_digest = get_email_from_apikey(&mut bg, apikey.key.clone());
-    let tn = format!("answers_{}", email_digest);
-    let mut table = bg.handle.table(tn).unwrap().into_sync();
+    let email_key = trim_email(apikey.user.clone());
+    let table_name = format!("answers_{}", email_key);
+    let mut table = bg.handle.table(table_name).unwrap().into_sync();
 
     for (id, answer) in &data.answers {
         let rec: Vec<DataType> = vec![
-            email_digest.clone().into(),
+            email_key.clone().into(),
             num.clone(),
             (*id).into(),
             answer.clone().into(),
@@ -282,16 +285,4 @@ pub(crate) fn questions_submit(
     }
 
     Redirect::to("/leclist")
-}
-
-pub(crate) fn get_email_from_apikey(
-    bg: &mut std::sync::MutexGuard<'_, NoriaBackend>,
-    apikey: String,
-) -> String {
-    let mut email_from_apikey = bg.handle.view("users_by_apikey").unwrap().into_sync();
-    let email = email_from_apikey
-        .lookup(&[apikey.into()], true)
-        .expect("email lookup failed");
-    let e: String = email[0][0].clone().into();
-    return e;
 }

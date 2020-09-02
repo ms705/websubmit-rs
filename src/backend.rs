@@ -21,7 +21,7 @@ use std::time::Duration;
 pub struct NoriaBackend {
     pub handle: SyncHandle<ZookeeperAuthority>,
     _log: slog::Logger,
-    pub union: Option<NodeIndex>,
+    pub unions: Option<(NodeIndex, NodeIndex)>,
     pub name_to_nodeIndex: HashMap<String, NodeIndex>,
 }
 
@@ -42,8 +42,6 @@ impl NoriaBackend {
             Some(String::from(class)),
             1,
         ));
-        // let zk = ZooKeeper::connect(zk_addr, Duration::from_secs(1), |_| {}).unwrap();
-        // let _ = zk.delete("/hello", None);
         let authority: Arc<ZookeeperAuthority> =
             Arc::new(ZookeeperAuthority::new(zk_addr).unwrap());
         let mut rt = tokio::runtime::Runtime::new().unwrap();
@@ -55,11 +53,6 @@ impl NoriaBackend {
         b.create_global_table(&mut sh, "shards", &["name", "node_index"], vec![1]);
 
         let _ = sh.migrate(move |mig| {
-            let users = mig.add_base(
-                "users",
-                &["email_key", "apikey"],
-                Base::new(vec![]).with_key(vec![1]),
-            );
             let lectures = mig.add_base(
                 "lectures",
                 &["id", "label"],
@@ -108,26 +101,12 @@ impl NoriaBackend {
                 Project::new(questions, &[0, 1, 2], Some(vec![0.into()]), None),
             );
             mig.maintain_anonymous(qs_by_lec, &[0]);
-
-            let users_by_apikey = mig.add_ingredient(
-                "users_by_apikey",
-                &["email_key", "apikey"],
-                Project::new(users, &[0, 1], None, None),
-            );
-            mig.maintain_anonymous(users_by_apikey, &[1]);
-
-            let all_users = mig.add_ingredient(
-                "all_users",
-                &["email_key", "bogokey"],
-                Project::new(users, &[0], Some(vec![0.into()]), None),
-            );
-            mig.maintain_anonymous(all_users, &[1]);
         });
 
         Ok(NoriaBackend {
             handle: sh,
             _log: log,
-            union: None,
+            unions: None,
             name_to_nodeIndex: HashMap::default(),
         })
     }

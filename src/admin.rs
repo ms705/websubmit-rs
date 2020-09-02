@@ -1,4 +1,3 @@
-use crate::apikey::get_users_email_keys;
 use crate::apikey::ApiKey;
 use crate::backend::NoriaBackend;
 use crate::config::Config;
@@ -208,35 +207,20 @@ pub(crate) fn editq_submit(
 }
 
 #[get("/")]
-pub(crate) fn get_registered_users(
-    _adm: Admin,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
-) -> Template {
+pub(crate) fn registered_users(backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
     let mut bg = backend.lock().unwrap();
-    let email_keys = get_users_email_keys(&mut bg);
-    let mut users = Vec::new();
-    for email in email_keys.iter() {
-        let mut personal_view = bg
-            .handle
-            .view(format!("userinfo_from_{}", email))
-            .unwrap()
-            .into_sync();
-        let result = personal_view
-            .lookup(&[0.into()], true)
-            .expect("failed to look up the user in a personal table");
-
-        let curr_users: Vec<_> = result
-            .into_iter()
-            .map(|r| User {
-                email: r[0].clone().into(),
-                apikey: r[2].clone().into(),
-                is_admin: r[1].clone().into(),
-            })
-            .collect();
-        for user in curr_users {
-            users.push(user);
-        }
-    }
+    let mut view = bg.handle.view("all_users").unwrap().into_sync();
+    let res = view
+        .lookup(&[0.into()], true)
+        .expect("failed to lookup all_users view");
+    let users = res
+        .into_iter()
+        .map(|r| User {
+            email: r[0].clone().into(),
+            apikey: r[1].clone().into(),
+            is_admin: r[2].clone().into(),
+        })
+        .collect();
 
     let ctx = UserContext {
         users: users,
@@ -263,7 +247,6 @@ pub(crate) fn show_answers(
         .view("answers_by_q_and_apikey")
         .unwrap()
         .into_sync();
-    // lookup by email_key and qid
     let res = view
         .lookup(&[email_key.clone().into(), q_id.into()], true)
         .expect("failed to look up the user in answers_by_q_and_apikey");
