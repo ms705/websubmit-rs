@@ -6,7 +6,7 @@
       <label>{{{ this.prompt }}}:
         <p>
         <textarea name="q_{{{ this.id }}}" rows="10" cols="80"
-         {{#if this.answer}} disabled
+         {{#if this.answer}}
          {{else}} placeholder="Write something here."
          {{/if}}>{{{ this.answer }}}</textarea>
         </p>
