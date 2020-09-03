@@ -234,6 +234,8 @@ pub(crate) fn questions_submit(
     backend: State<Arc<Mutex<NoriaBackend>>>,
     config: State<Config>,
 ) -> Redirect {
+    use noria::Modification;
+
     let mut bg = backend.lock().unwrap();
 
     let num: DataType = (num as u64).into();
@@ -251,7 +253,15 @@ pub(crate) fn questions_submit(
             answer.clone().into(),
             ts.clone(),
         ];
-        table.insert(rec).expect("failed to write answer!");
+        table
+            .insert_or_update(
+                rec,
+                vec![
+                    (3, Modification::Set(answer.clone().into())),
+                    (4, Modification::Set(ts.clone())),
+                ],
+            )
+            .expect("failed to write answer!");
     }
 
     if config.send_emails {
