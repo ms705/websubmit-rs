@@ -1,6 +1,7 @@
 use crate::apikey::ApiKey;
 use crate::backend::NoriaBackend;
 use crate::config::Config;
+use crate::questions::{LectureQuestion, LectureQuestionsContext};
 use rocket::http::Status;
 use rocket::outcome::IntoOutcome;
 use rocket::request::Form;
@@ -88,15 +89,35 @@ pub(crate) fn lec_add_submit(
 }
 
 #[get("/<num>")]
-pub(crate) fn lec(_adm: Admin, num: u8, _backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
-    let mut ctx = HashMap::new();
-    ctx.insert("lec_id", format!("{}", num));
-    ctx.insert("parent", String::from("layout"));
+pub(crate) fn lec(_adm: Admin, num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+    let mut bg = backend.lock().unwrap();
+    let mut view = bg.handle.view("qs_by_lec").unwrap().into_sync();
+    let res = view
+        .lookup(&[(num as u64).into()], true)
+        .expect("failed to read questions for lecture!");
+
+    let qs: Vec<_> = res
+        .into_iter()
+        .map(|r| {
+            let id: u64 = r[1].clone().into();
+            LectureQuestion {
+                id: id,
+                prompt: r[2].clone().into(),
+                answer: None,
+            }
+        })
+        .collect();
+
+    let ctx = LectureQuestionsContext {
+        lec_id: num,
+        questions: qs,
+        parent: "layout",
+    };
     Template::render("admin/lec", &ctx)
 }
 
 #[post("/<num>", data = "<data>")]
-pub(crate) fn lec_submit(
+pub(crate) fn addq(
     _adm: Admin,
     num: u8,
     data: Form<AddLectureQuestionForm>,
@@ -110,7 +131,53 @@ pub(crate) fn lec_submit(
             (data.q_id as u64).into(),
             data.q_prompt.to_string().into(),
         ])
-        .expect("failed to insert question!");
+        .expect("failed to add question!");
+
+    Redirect::to(format!("/admin/lec/{}", num))
+}
+
+#[get("/<num>/<qnum>")]
+pub(crate) fn editq(
+    _adm: Admin,
+    num: u8,
+    qnum: u8,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+) -> Template {
+    let mut bg = backend.lock().unwrap();
+    let mut view = bg.handle.view("qs_by_lec").unwrap().into_sync();
+    let res = view
+        .lookup(&[(num as u64).into()], true)
+        .expect("failed to read questions for lecture!");
+
+    let mut ctx = HashMap::new();
+    for r in res {
+        if r[1] == (qnum as u64).into() {
+            ctx.insert("lec_qprompt", r[2].clone().into());
+        }
+    }
+    ctx.insert("lec_id", format!("{}", num));
+    ctx.insert("lec_qnum", format!("{}", qnum));
+    ctx.insert("parent", String::from("layout"));
+    Template::render("admin/lec_edit", &ctx)
+}
+
+#[post("/editq/<num>", data = "<data>")]
+pub(crate) fn editq_submit(
+    _adm: Admin,
+    num: u8,
+    data: Form<AddLectureQuestionForm>,
+    backend: State<Arc<Mutex<NoriaBackend>>>,
+) -> Redirect {
+    use noria::Modification;
+
+    let mut bg = backend.lock().unwrap();
+    let mut table = bg.handle.table("questions").unwrap().into_sync();
+    table
+        .update(
+            vec![(num as u64).into(), (data.q_id as u64).into()],
+            vec![(2, Modification::Set(data.q_prompt.to_string().into()))],
+        )
+        .expect("failed to update question!");
 
     Redirect::to(format!("/admin/lec/{}", num))
 }

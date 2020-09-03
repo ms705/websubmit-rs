@@ -2,11 +2,11 @@
     <h1>Lecture {{{ lec_id }}} admin</h1>
 
     <h2>Current questions</h2>
-    <ol>
+    <ul>
       {{#each questions}}
-      <li>{{{ this.id }}}: {{{ this.prompt }}}
+      <li>{{{ this.id }}}: {{{ this.prompt }}} &ndash; <a href="/admin/lec/{{{ ../lec_id }}}/{{{ this.id }}}">edit</a>
       {{/each}}
-    </ol>
+    </ul>
 
     <h2>Add question</h2>
     <form action="/admin/lec/{{{ lec_id }}}" method="post" accept-charset="utf-8">
