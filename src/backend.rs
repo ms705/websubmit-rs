@@ -1,7 +1,4 @@
-pub use noria::DataType;
-
 use noria::builder::Builder;
-
 use noria::handle::SyncHandle;
 pub use noria::manual::ops::filter::{Filter, FilterCondition, Value};
 pub use noria::manual::ops::grouped::aggregate::Aggregation;
@@ -12,21 +9,26 @@ pub use noria::manual::Base;
 pub use noria::manual::Operator;
 pub use noria::NodeIndex;
 use noria::ZookeeperAuthority;
+pub use noria::{DataType, Modification};
 use noria::{DurabilityMode, PersistenceParameters};
 use std::collections::HashMap;
 use std::sync::Arc;
-pub use std::thread;
+use std::thread;
 use std::time::Duration;
 
 pub struct NoriaBackend {
     pub handle: SyncHandle<ZookeeperAuthority>,
     _log: slog::Logger,
     pub unions: Option<(NodeIndex, NodeIndex)>,
-    pub name_to_nodeIndex: HashMap<String, NodeIndex>,
+    pub noria_index: HashMap<String, u32>,
 }
 
 impl NoriaBackend {
-    pub fn new(zk_addr: &str, class: &str, log: Option<slog::Logger>) -> Result<Self, std::io::Error> {
+    pub fn new(
+        zk_addr: &str,
+        class: &str,
+        log: Option<slog::Logger>,
+    ) -> Result<Self, std::io::Error> {
         let log = match log {
             None => slog::Logger::root(slog::Discard, o!()),
             Some(l) => l,
@@ -34,7 +36,6 @@ impl NoriaBackend {
 
         let mut b = Builder::default();
         b.set_sharding(None);
-        b.disable_partial();
         b.log_with(log.clone());
         b.set_persistence(PersistenceParameters::new(
             DurabilityMode::DeleteOnExit,
@@ -50,9 +51,22 @@ impl NoriaBackend {
         thread::sleep(Duration::from_millis(200));
         let mut sh = SyncHandle::from_existing(rt, wh);
         thread::sleep(Duration::from_millis(200));
-        b.create_global_table(&mut sh, "shards", &["name", "node_index"], vec![1]);
+        b.create_global_table(&mut sh, "shards", &["name", "node_index"], vec![1])
+            .expect("failed to create a global table");
 
         let _ = sh.migrate(move |mig| {
+            let exports = mig.add_base(
+                "exports",
+                &["apikey", "hash"],
+                Base::default().with_key(vec![0]),
+            );
+            let exports_by_apikey = mig.add_ingredient(
+                "exports_by_apikey",
+                &["apikey", "hash"],
+                Project::new(exports, &[0, 1], None, None),
+            );
+            mig.maintain_anonymous(exports_by_apikey, &[0]);
+
             let lectures = mig.add_base(
                 "lectures",
                 &["id", "label"],
@@ -73,7 +87,6 @@ impl NoriaBackend {
                 &["lec", "qcount"],
                 Project::new(qcount, &[0, 1], None, None),
             );
-
             let j = Join::new(
                 qc,
                 lectures,
@@ -107,7 +120,7 @@ impl NoriaBackend {
             handle: sh,
             _log: log,
             unions: None,
-            name_to_nodeIndex: HashMap::default(),
+            noria_index: HashMap::default(),
         })
     }
 }

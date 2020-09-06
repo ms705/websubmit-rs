@@ -5,8 +5,8 @@ import hashlib
 admin_key ='0ab1f0f6afc524bb5a36641978aa7d37e017d63e6387cef3324bb57d48154c39'
 responses = 1
 users_by_apikey = {}
-NUM_USERS = 50
-UNSUB = 10
+NUM_USERS = 10
+UNSUB = 5
 
 intervals = []
 
@@ -44,7 +44,7 @@ def add_lecture_and_question(session, lec_id):
   # return to the leclist
   session.get('http://localhost:8000/leclist')
 
-def create_answer(session, lec_num, q_num, email_key):
+def create_answer(session, lec_num, q_num):
   global stack
   question_url = f'http://localhost:8000/questions/{lec_num}'
   session.get(question_url)
@@ -62,7 +62,7 @@ if __name__ == '__main__':
   generate_user(admin_session, 'ekiziv@brown.edu', admin_key)
   add_lecture_and_question(admin_session, "0")
 
-  for i in range (NUM_USERS):
+  for i in range (1):
     print("Creating user number:", i)
     response = users_session.get('http://localhost:8000/login')
     email = faker.email()

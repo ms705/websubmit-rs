@@ -73,7 +73,7 @@ pub(crate) fn leclist(
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("leclist").unwrap().into_sync();
-    let user = apikey.user.clone();
+    let user = trim_email(apikey.user.clone());
     let admin = config.staff.contains(&user);
 
     let res = h
@@ -142,6 +142,33 @@ pub(crate) fn answers(
         parent: "layout",
     };
     Template::render("answers", &ctx)
+}
+
+#[get("/<num>")]
+pub(crate) fn faq(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+    let mut bg = backend.lock().unwrap();
+
+    let mut h = bg.handle.view("faq").unwrap().into_sync();
+    // 0 is a bogokey
+    let res = h
+        .lookup(&[(num as u64).into()], true)
+        .expect("user list lookup failed");
+    let answers: Vec<_> = res
+        .into_iter()
+        .map(|r| LectureAnswer {
+            id: r[2].clone().into(),
+            user: "Anonymous".to_string(),
+            answer: r[3].clone().into(),
+            time: None,
+        })
+        .collect();
+
+    let ctx = LectureAnswersContext {
+        lec_id: num,
+        answers: answers,
+        parent: "layout",
+    };
+    Template::render("faq", &ctx)
 }
 
 #[get("/<num>")]

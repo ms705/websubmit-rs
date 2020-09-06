@@ -10,11 +10,10 @@ clap = "2.33.0"
 rust-crypto = "0.2.36"
 lettre = "0.9.2"
 lettre_email = "0.9.2"
-#noria = { git = "https://github.com/mit-pdos/noria", branch="add-parent" }
 noria = { path = "/Users/eleonorakiziv/rust/noria/noria/noria-server", package = "noria-server" }
 rocket = "0.4.2"
-#slog = "2.4.0"
-slog = { version = "2.4.0", features = ["max_level_trace", "release_max_level_trace"] }
+slog = "2.4.0"
+#slog = { version = "2.4.0", features = ["max_level_trace", "release_max_level_trace"] }
 slog-term = "2.4.0"
 tokio = "0.1"
 toml = "0.2.1"
@@ -23,6 +22,9 @@ serde_derive = "1.0"
 serde_json = "1.0"
 openssl = "0.10"
 openssl-sys = "0.9"
+mime = "0.3.13"
+rocket-multipart-form-data = "0.9.5"
+
 
 [dependencies.rocket_contrib]
 version = "0.4.2"

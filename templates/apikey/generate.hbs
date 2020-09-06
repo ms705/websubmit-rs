@@ -2,15 +2,21 @@
   <p>Your API key has been emailed to <b>{{{ apikey_email }}}</b>.</p>
 
   <p>Once you've received the API key, paste it below to log in.</p>
-  <form action="/apikey/check" method="post" accept-charset="utf-8">
-    <label>API key:
-      <p>
-      <input name="key" />
-      </p>
-    </label>
-    <input type="submit" value="Submit">
+
+  <form action="/apikey/check_with_permissions" method="post" accept-charset="utf-8">
+  <label>API key:<p><input name="key"/></p></label>
+
+  <p>Select your privacy settings. You'll be able to update them in Account Settings.</p>
+  <input type="checkbox" name="essential" value="true" checked disabled> My information can be used to submit answers (essential to ensure your answers are submitted) <br>
+    <input type="checkbox" name="answers" value="true" checked> My answers can be dispayed anonymously <br>
+    <input type="checkbox" name="research" value="true" checked> My answers can be collected to be used for academic research <br>
+  <br>
+  <input type="submit" value="Submit">
   </form>
 
   <p><a href="/">Back to login</a></p>
 {{/inline}}
 {{~> (parent)~}}
+
+
+

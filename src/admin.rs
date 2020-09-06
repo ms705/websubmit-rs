@@ -1,13 +1,12 @@
+use crate::apikey::trim_email;
 use crate::apikey::ApiKey;
 use crate::backend::NoriaBackend;
 use crate::config::Config;
 use crate::questions::LectureAnswer;
 use crate::questions::{LectureQuestion, LectureQuestionsContext};
-use noria::DataType;
 use rocket::http::Status;
 use rocket::outcome::IntoOutcome;
 use rocket::request::Form;
-
 use rocket::request::FromForm;
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::Redirect;
@@ -30,7 +29,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
         let apikey = request.guard::<ApiKey>().unwrap();
         let cfg = request.guard::<State<Config>>().unwrap();
 
-        let res = if cfg.staff.contains(&apikey.user) {
+        let res = if cfg.staff.contains(&trim_email(apikey.user)) {
             Some(Admin)
         } else {
             None
@@ -207,7 +206,7 @@ pub(crate) fn editq_submit(
 }
 
 #[get("/")]
-pub(crate) fn registered_users(backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+pub(crate) fn registered_users(_adm: Admin, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut view = bg.handle.view("all_users").unwrap().into_sync();
     let res = view
@@ -227,48 +226,4 @@ pub(crate) fn registered_users(backend: State<Arc<Mutex<NoriaBackend>>>) -> Temp
         parent: "layout",
     };
     Template::render("admin/users", &ctx)
-}
-
-#[post("/answers", data = "<data>")]
-pub(crate) fn qanswer_for_user(_admin: Admin, data: Form<UserAnswer>) -> Redirect {
-    Redirect::to(format!("/admin/answers/{}/{}", data.email_key, data.q_id))
-}
-
-#[get("/answers/<email_key>/<q_id>")]
-pub(crate) fn show_answers(
-    _admin: Admin,
-    email_key: String,
-    q_id: u64,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
-) -> Template {
-    let mut bg = backend.lock().unwrap();
-    let mut view = bg
-        .handle
-        .view("answers_by_q_and_apikey")
-        .unwrap()
-        .into_sync();
-    let res = view
-        .lookup(&[email_key.clone().into(), q_id.into()], true)
-        .expect("failed to look up the user in answers_by_q_and_apikey");
-
-    let answers: Vec<_> = res
-        .into_iter()
-        .map(|r| LectureAnswer {
-            id: r[2].clone().into(),
-            user: r[0].clone().into(),
-            answer: r[3].clone().into(),
-            time: if let DataType::Timestamp(ts) = r[4] {
-                Some(ts)
-            } else {
-                None
-            },
-        })
-        .collect();
-    let ctx = UserAnswerContext {
-        q_id: q_id,
-        answers: answers,
-        email_key: email_key,
-        parent: "layout",
-    };
-    Template::render("admin/ind_answers", &ctx)
 }

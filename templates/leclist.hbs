@@ -1,21 +1,23 @@
 {{#*inline "page"}}
+  <div>
+    <a href="/apikey/account">Account Settings</a>
+  </div>
+
+  <hr />
+
   <h1>List of lectures</h1>
 
   <ol>
   {{#each lectures}}
     <li>
       <a href="/questions/{{{ this.id }}}">{{{ this.label }}}</a> ({{{ this.num_answered }}}/{{{ this.num_qs }}})
+      <small><a href="/faq/{{{ this.id }}}">faq</a></small>
       {{#if ../admin}}
       &ndash; <small><a href="/answers/{{{ this.id }}}">answers</a> <a href="/admin/lec/{{{ this.id }}}">admin</a></small>
       {{/if}}
     </li>
   {{/each}}
   </ol>
-
-  <h5>Want to remove your data from websubmit?</h5>
-    <form action="/apikey/remove_data" method="post" accept-charset="utf-8">
-      <input type="submit" value="Submit">
-    </form>
 
   {{#if ../admin}}
   <hr />
@@ -28,18 +30,6 @@
       <a href="admin/users">see users</a>
     </li>
   </ul>
-
-  <h1>Check answers from a user</h1>
-  <form action="/admin/answers" method="post" accept-charset="utf-8">
-      <p>
-        <label>email_key<input name="email_key"/></label>
-      </p>
-      <p>
-        <label> q <input name="q_id" />
-        </label>
-      </p>
-      <input type="submit" value="Submit">
-    </form>
 
   {{/if}}
 {{/inline}}

@@ -1,6 +1,12 @@
 {{#*inline "page"}}
-<h1>Question: {{{ q_id }}} user: {{{ email_key }}} </h1>
+    <h1>Lecture {{{ lec_id }}} answers:</h1>
+
     <table>
+      <tr>
+        <th>User</th>
+        <th>ID</th>
+        <th>Answer</th>
+      </tr>
       {{#each answers}}
       <tr>
         <td>{{{ this.user }}}</td>
@@ -10,7 +16,5 @@
       </tr>
       {{/each}}
     </table>
-
-
 {{/inline}}
 {{~> (parent)~}}
