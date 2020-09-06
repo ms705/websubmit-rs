@@ -20,18 +20,18 @@ pub(crate) struct LectureQuestionSubmission {
     answers: Vec<(u64, String)>,
 }
 
-#[derive(Serialize, Clone, Debug)]
-struct LectureQuestion {
-    id: u64,
-    prompt: String,
-    answer: Option<String>,
+#[derive(Serialize)]
+pub(crate) struct LectureQuestion {
+    pub id: u64,
+    pub prompt: String,
+    pub answer: Option<String>,
 }
 
 #[derive(Serialize)]
-struct LectureQuestionsContext {
-    lec_id: u8,
-    questions: Vec<LectureQuestion>,
-    parent: &'static str,
+pub(crate) struct LectureQuestionsContext {
+    pub lec_id: u8,
+    pub questions: Vec<LectureQuestion>,
+    pub parent: &'static str,
 }
 
 #[derive(Serialize)]
