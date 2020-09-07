@@ -1,4 +1,5 @@
 use crate::admin::Admin;
+use crate::apikey::trim_email;
 use crate::apikey::ApiKey;
 use crate::backend::{DataType, NoriaBackend};
 use crate::config::Config;
@@ -35,11 +36,11 @@ pub(crate) struct LectureQuestionsContext {
 }
 
 #[derive(Serialize)]
-struct LectureAnswer {
-    id: u64,
-    user: String,
-    answer: String,
-    time: Option<NaiveDateTime>,
+pub struct LectureAnswer {
+    pub id: u64,
+    pub user: String,
+    pub answer: String,
+    pub time: Option<NaiveDateTime>,
 }
 
 #[derive(Serialize)]
@@ -72,8 +73,7 @@ pub(crate) fn leclist(
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let mut h = bg.handle.view("leclist").unwrap().into_sync();
-
-    let user = apikey.user.clone();
+    let user = trim_email(apikey.user.clone());
     let admin = config.staff.contains(&user);
 
     let res = h
@@ -116,11 +116,12 @@ pub(crate) fn answers(
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
+
     let mut h = bg.handle.view("answers_by_lec").unwrap().into_sync();
-
-    let key: DataType = (num as u64).into();
-
-    let res = h.lookup(&[key], true).expect("failed to look up answers!");
+    // 0 is a bogokey
+    let res = h
+        .lookup(&[(num as u64).into()], true)
+        .expect("user list lookup failed");
     let answers: Vec<_> = res
         .into_iter()
         .map(|r| LectureAnswer {
@@ -144,29 +145,59 @@ pub(crate) fn answers(
 }
 
 #[get("/<num>")]
+pub(crate) fn faq(num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+    let mut bg = backend.lock().unwrap();
+
+    let mut h = bg.handle.view("faq").unwrap().into_sync();
+    // 0 is a bogokey
+    let res = h
+        .lookup(&[(num as u64).into()], true)
+        .expect("user list lookup failed");
+    let answers: Vec<_> = res
+        .into_iter()
+        .map(|r| LectureAnswer {
+            id: r[2].clone().into(),
+            user: "Anonymous".to_string(),
+            answer: r[3].clone().into(),
+            time: None,
+        })
+        .collect();
+
+    let ctx = LectureAnswersContext {
+        lec_id: num,
+        answers: answers,
+        parent: "layout",
+    };
+    Template::render("faq", &ctx)
+}
+
+#[get("/<num>")]
 pub(crate) fn questions(
     apikey: ApiKey,
     num: u8,
     backend: State<Arc<Mutex<NoriaBackend>>>,
 ) -> Template {
     use std::collections::HashMap;
-
-    let mut bg = backend.lock().unwrap();
-    let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
     let key: DataType = (num as u64).into();
 
-    let mut ah = bg.handle.view("my_answers_for_lec").unwrap().into_sync();
+    let mut bg = backend.lock().unwrap();
+
+    // Fetch my answers for the lecture
+    let view_name = &format!("my_answers_for_lec_{}", trim_email(apikey.user));
+    let mut ah = bg.handle.view(view_name).unwrap().into_sync();
     let answers_res = ah
-        .lookup(&[(num as u64).into(), apikey.user.clone().into()], true)
-        .expect("lecture questions lookup failed");
-    let mut answers = HashMap::new();
+        .lookup(&[(num as u64).into()], true)
+        .expect("my_answers_for_lec lookup failed");
+    let answers: HashMap<u64, String> = answers_res
+        .into_iter()
+        .map(|r| {
+            let id = r[2].clone().into();
+            let answer_text = r[3].clone().into();
+            (id, answer_text)
+        })
+        .collect();
 
-    for r in answers_res {
-        let id: u64 = r[2].clone().into();
-        let atext: String = r[3].clone().into();
-        answers.insert(id, atext);
-    }
-
+    let mut qh = bg.handle.view("qs_by_lec").unwrap().into_sync();
     let res = qh
         .lookup(&[key], true)
         .expect("lecture questions lookup failed");
@@ -174,11 +205,16 @@ pub(crate) fn questions(
         .into_iter()
         .map(|r| {
             let id: u64 = r[1].clone().into();
-            let answer = answers.get(&id).map(|s| s.to_owned());
+            let answer = match answers.get(&id) {
+                Some(a) => a,
+                None => "None",
+            }
+            .to_owned();
+
             LectureQuestion {
                 id: id,
                 prompt: r[2].clone().into(),
-                answer: answer,
+                answer: Some(answer),
             }
         })
         .collect();
@@ -235,11 +271,13 @@ pub(crate) fn questions_submit(
     let num: DataType = (num as u64).into();
     let ts: DataType = DataType::Timestamp(Local::now().naive_local());
 
-    let mut table = bg.handle.table("answers").unwrap().into_sync();
+    let email_key = trim_email(apikey.user.clone());
+    let table_name = format!("answers_{}", email_key);
+    let mut table = bg.handle.table(table_name).unwrap().into_sync();
 
     for (id, answer) in &data.answers {
         let rec: Vec<DataType> = vec![
-            apikey.user.clone().into(),
+            email_key.clone().into(),
             num.clone(),
             (*id).into(),
             answer.clone().into(),

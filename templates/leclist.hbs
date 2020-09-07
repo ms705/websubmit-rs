@@ -1,10 +1,17 @@
 {{#*inline "page"}}
+  <div>
+    <a href="/apikey/account">Account Settings</a>
+  </div>
+
+  <hr />
+
   <h1>List of lectures</h1>
 
   <ol>
   {{#each lectures}}
     <li>
       <a href="/questions/{{{ this.id }}}">{{{ this.label }}}</a> ({{{ this.num_answered }}}/{{{ this.num_qs }}})
+      <small><a href="/faq/{{{ this.id }}}">faq</a></small>
       {{#if ../admin}}
       &ndash; <small><a href="/answers/{{{ this.id }}}">answers</a> <a href="/admin/lec/{{{ this.id }}}">admin</a></small>
       {{/if}}
@@ -23,6 +30,8 @@
       <a href="admin/users">see users</a>
     </li>
   </ul>
+
   {{/if}}
 {{/inline}}
+
 {{~> (parent)~}}

@@ -1,0 +1,25 @@
+{{#*inline "page"}}
+  <form action="/apikey/export" method="post" accept-charset="utf-8">
+    <label>Send a copy of my data to the following email address:
+    </label>
+    <br>
+    <input type="submit" value="Send">
+  </form>
+
+  <form action="/apikey/change_permissions" method="post" accept-charset="utf-8">
+    <label>Update my privacy settings:</label> <br>
+    <input type="checkbox" name="essential" value="true" checked disabled> My information can be used to submit answers (essential to ensure your answers are submitted) <br>
+    <input type="checkbox" name="answers" value="true" {{this.answers}}> My answers can be dispayed anonymously <br>
+    <input type="checkbox" name="research" value="true" {{this.research}}> My answers can be collected to be used for academic research <br>
+    <br>
+    <input type="submit" value="Update">
+  </form>
+
+  <form action="/apikey/remove_data" method="post" accept-charset="utf-8">
+    <label>Remove all my data from websubmit: <br></label>
+    <br>
+    <input type="submit" value="Unsubscribe">
+  </form>
+
+{{/inline}}
+{{~> (parent)~}}

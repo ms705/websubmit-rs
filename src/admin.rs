@@ -1,10 +1,13 @@
+use crate::apikey::trim_email;
 use crate::apikey::ApiKey;
 use crate::backend::NoriaBackend;
 use crate::config::Config;
+use crate::questions::LectureAnswer;
 use crate::questions::{LectureQuestion, LectureQuestionsContext};
 use rocket::http::Status;
 use rocket::outcome::IntoOutcome;
 use rocket::request::Form;
+use rocket::request::FromForm;
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::Redirect;
 use rocket::State;
@@ -26,7 +29,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
         let apikey = request.guard::<ApiKey>().unwrap();
         let cfg = request.guard::<State<Config>>().unwrap();
 
-        let res = if cfg.staff.contains(&apikey.user) {
+        let res = if cfg.staff.contains(&trim_email(apikey.user)) {
             Some(Admin)
         } else {
             None
@@ -36,7 +39,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
     }
 }
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, Serialize, Clone, FromForm)]
 pub(crate) struct AddLectureQuestionForm {
     q_id: u64,
     q_prompt: String,
@@ -44,15 +47,15 @@ pub(crate) struct AddLectureQuestionForm {
 
 #[derive(Debug, FromForm)]
 pub(crate) struct AdminLecAdd {
-    lec_id: u8,
+    lec_id: i64,
     lec_label: String,
 }
 
 #[derive(Debug, Serialize)]
 pub(crate) struct User {
-  email: String,
-  apikey: String,
-  is_admin: u8,
+    email: String,
+    apikey: String,
+    is_admin: i64,
 }
 
 #[derive(Serialize)]
@@ -61,6 +64,26 @@ struct UserContext {
     parent: &'static str,
 }
 
+#[derive(Serialize)]
+struct QuestionContext {
+    questions: Vec<LectureQuestion>,
+    parent: &'static str,
+    lec_id: String,
+}
+
+#[derive(Debug, FromForm, Serialize)]
+pub(crate) struct UserAnswer {
+    email_key: String,
+    q_id: u64,
+}
+
+#[derive(Serialize)]
+pub(crate) struct UserAnswerContext {
+    email_key: String,
+    q_id: u64,
+    answers: Vec<LectureAnswer>,
+    parent: &'static str,
+}
 
 #[get("/")]
 pub(crate) fn lec_add(_adm: Admin) -> Template {
@@ -183,26 +206,20 @@ pub(crate) fn editq_submit(
 }
 
 #[get("/")]
-pub(crate) fn get_registered_users
-(_adm: Admin,
-  backend: State<Arc<Mutex<NoriaBackend>>>,
-  config: State<Config>) -> Template {
-  let mut bg = backend.lock().unwrap();
-  let mut h = bg.handle.view("all_users").unwrap().into_sync();
-
-  // 0 is a bogokey
-  let res = h
-        .lookup(&[(0 as u64).into()], true)
-        .expect("lecture list lookup failed");
-
-  let users: Vec<_> = res
-    .into_iter()
-    .map(|r| User {
-      email: r[0].clone().into(),
-      apikey: r[2].clone().into(),
-      is_admin: if config.staff.contains(&r[0].clone().into()) {1} else {0}, // r[1].clone().into(), this type conversion does not work
-    })
-    .collect();
+pub(crate) fn registered_users(_adm: Admin, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+    let mut bg = backend.lock().unwrap();
+    let mut view = bg.handle.view("all_users").unwrap().into_sync();
+    let res = view
+        .lookup(&[0.into()], true)
+        .expect("failed to lookup all_users view");
+    let users = res
+        .into_iter()
+        .map(|r| User {
+            email: r[0].clone().into(),
+            apikey: r[1].clone().into(),
+            is_admin: r[2].clone().into(),
+        })
+        .collect();
 
     let ctx = UserContext {
         users: users,
