@@ -26,7 +26,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Admin {
         let apikey = request.guard::<ApiKey>().unwrap();
         let cfg = request.guard::<State<Config>>().unwrap();
 
-        let res = if cfg.staff.contains(&apikey.user) {
+        let res = if cfg.admins.contains(&apikey.user) {
             Some(Admin)
         } else {
             None
