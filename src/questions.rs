@@ -74,7 +74,7 @@ pub(crate) fn leclist(
     let mut h = bg.handle.view("leclist").unwrap().into_sync();
 
     let user = apikey.user.clone();
-    let admin = config.staff.contains(&user);
+    let admin = config.admins.contains(&user);
 
     let res = h
         .lookup(&[(0 as u64).into()], true)

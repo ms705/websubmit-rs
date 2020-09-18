@@ -67,7 +67,7 @@ pub(crate) fn generate(
     hasher.input_str(&config.secret);
     let hash = hasher.result_str();
 
-    let is_admin = if config.staff.contains(&data.email) {
+    let is_admin = if config.admins.contains(&data.email) {
         1.into()
     } else {
         0.into()

@@ -200,7 +200,7 @@ pub(crate) fn get_registered_users(
         .map(|r| User {
             email: r[0].clone().into(),
             apikey: r[2].clone().into(),
-            is_admin: if config.staff.contains(&r[0].clone().into()) {
+            is_admin: if config.admins.contains(&r[0].clone().into()) {
                 1
             } else {
                 0
