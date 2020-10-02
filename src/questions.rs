@@ -182,7 +182,7 @@ pub(crate) fn questions(
             }
         })
         .collect();
-    qs.sort_by(|a, b| b.id.cmp(&a.id));
+    qs.sort_by(|a, b| a.id.cmp(&b.id));
 
     let ctx = LectureQuestionsContext {
         lec_id: num,

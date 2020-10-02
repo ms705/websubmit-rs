@@ -106,7 +106,7 @@ pub(crate) fn lec(_adm: Admin, num: u8, backend: State<Arc<Mutex<NoriaBackend>>>
             }
         })
         .collect();
-    qs.sort_by(|a, b| b.id.cmp(&a.id));
+    qs.sort_by(|a, b| a.id.cmp(&b.id));
 
     let ctx = LectureQuestionsContext {
         lec_id: num,
