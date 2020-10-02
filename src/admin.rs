@@ -95,7 +95,7 @@ pub(crate) fn lec(_adm: Admin, num: u8, backend: State<Arc<Mutex<NoriaBackend>>>
         .lookup(&[(num as u64).into()], true)
         .expect("failed to read questions for lecture!");
 
-    let qs: Vec<_> = res
+    let mut qs: Vec<_> = res
         .into_iter()
         .map(|r| {
             let id: u64 = r[1].clone().into();
@@ -106,6 +106,7 @@ pub(crate) fn lec(_adm: Admin, num: u8, backend: State<Arc<Mutex<NoriaBackend>>>
             }
         })
         .collect();
+    qs.sort_by(|a, b| b.id.cmp(&a.id));
 
     let ctx = LectureQuestionsContext {
         lec_id: num,

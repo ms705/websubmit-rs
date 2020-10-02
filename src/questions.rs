@@ -170,7 +170,7 @@ pub(crate) fn questions(
     let res = qh
         .lookup(&[key], true)
         .expect("lecture questions lookup failed");
-    let qs: Vec<_> = res
+    let mut qs: Vec<_> = res
         .into_iter()
         .map(|r| {
             let id: u64 = r[1].clone().into();
@@ -182,6 +182,7 @@ pub(crate) fn questions(
             }
         })
         .collect();
+    qs.sort_by(|a, b| b.id.cmp(&a.id));
 
     let ctx = LectureQuestionsContext {
         lec_id: num,
