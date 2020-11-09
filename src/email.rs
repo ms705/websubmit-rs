@@ -16,9 +16,14 @@ pub(crate) fn send(
             .to(recipient)
             .subject(subject.clone())
             .text(text.clone())
-            .build()
-            .expect("couldn't construct email");
-        mailer.send(email.into())?
+            .build();
+        match email {
+            Ok(email) => mailer.send(email.into())?,
+            Err(e) => {
+                println!("couldn't construct email: {}", e);
+                continue;
+            }
+        }
     }
 
     Ok(())
