@@ -258,6 +258,12 @@ pub(crate) fn questions_submit(
     }
 
     if config.send_emails {
+        let recipients = if num < 90.into() {
+            config.staff.clone()
+        } else {
+            config.admins.clone()
+        };
+
         email::send(
             apikey.user.clone(),
             config.staff.clone(),
