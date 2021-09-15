@@ -10,19 +10,18 @@ pub(crate) fn send(
 ) -> Result<(), lettre::sendmail::error::Error> {
     let mut mailer = SendmailTransport::new();
 
-    for recipient in recipients {
-        let email = Email::builder()
+    let mut builder = Email::builder()
             .from(sender.clone())
-            .to(recipient)
             .subject(subject.clone())
-            .text(text.clone())
-            .build();
-        match email {
-            Ok(email) => mailer.send(email.into())?,
-            Err(e) => {
-                println!("couldn't construct email: {}", e);
-                continue;
-            }
+            .text(text.clone());
+    for recipient in recipients {
+        builder = builder.to(recipient);
+    }
+    let email = builder.build();
+    match result {
+        Ok(result) => mailer.send(result.into())?,
+        Err(e) => {
+            println!("couldn't construct email: {}", e);
         }
     }
 
