@@ -18,7 +18,7 @@ pub(crate) fn send(
         builder = builder.to(recipient);
     }
     let email = builder.build();
-    match result {
+    match email {
         Ok(result) => mailer.send(result.into())?,
         Err(e) => {
             println!("couldn't construct email: {}", e);
