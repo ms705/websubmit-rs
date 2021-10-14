@@ -266,7 +266,7 @@ pub(crate) fn questions_submit(
 
         email::send(
             apikey.user.clone(),
-            config.staff.clone(),
+            recipients,
             format!("{} meeting {} questions", config.class, num),
             format!(
                 "{}",
