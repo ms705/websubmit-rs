@@ -105,7 +105,10 @@ impl MySqlBackend {
                             tab_cols
                         );*/
 
-                        db.query_drop(stmt).unwrap();
+                        if prime {
+                          // create the table
+                          db.query_drop(stmt).unwrap();
+                        }
                         tables.insert(name.to_string(), (tab_keys, tab_cols));
                     }
                 }
