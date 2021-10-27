@@ -18,6 +18,8 @@ pub struct Config {
     pub secret: String,
     /// Whether to send emails
     pub send_emails: bool,
+    /// Whether to reset and prime db 
+    pub prime: bool,
 }
 
 pub(crate) fn parse(path: &str) -> Result<Config, Error> {
@@ -57,5 +59,6 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
         resource_dir: value.get("resource_dir").unwrap().as_str().unwrap().into(),
         secret: value.get("secret").unwrap().as_str().unwrap().into(),
         send_emails: value.get("send_emails").unwrap().as_bool().unwrap().into(),
+        prime: value.get("prime").unwrap().as_bool().unwrap().into(),
     })
 }
