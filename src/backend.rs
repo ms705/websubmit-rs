@@ -3,6 +3,7 @@ use mysql::Opts;
 pub use mysql::Value;
 use mysql::*;
 use std::collections::HashMap;
+use sqlparser::ast::*;
 
 pub struct MySqlBackend {
     pub handle: mysql::Conn,
@@ -29,7 +30,7 @@ impl MySqlBackend {
             "Connecting to MySql DB and initializing schema {}...", dbname
         );
         let mut db = mysql::Conn::new(
-            Opts::from_url(&format!("mysql://tslilyai:pass@127.0.0.1/{}", dbname)).unwrap(),
+            Opts::from_url(&format!("mysql://root:password@127.0.0.1/{}", dbname)).unwrap(),
         )
         .unwrap();
         assert_eq!(db.ping(), true);
@@ -65,19 +66,20 @@ impl MySqlBackend {
                     let prepstmt = db.prep(query).unwrap();
                     queries.insert(name.to_string(), prepstmt);
                 } else {
-                    /*let asts = sql_parser::parser::parse_statements(stmt.to_string())
+                    let dialect = sqlparser::dialect::GenericDialect {};
+                    let asts = sqlparser::parser::Parser::parse_sql(&dialect, stmt.to_string())
                         .expect(&format!("could not parse stmt {}!", stmt));
                     if asts.len() != 1 {
                         panic!("More than one stmt {:?}", asts);
                     }
                     let parsed = &asts[0];
 
-                    if let sql_parser::ast::Statement::CreateTable(CreateTableStatement {
+                    if let sqlparser::ast::Statement::CreateTable {
                         name,
                         columns,
                         constraints,
                         ..
-                    }) = parsed
+                    } = parsed
                     {
                         let mut tab_keys = vec![];
                         let tab_cols = columns.iter().map(|c| c.name.to_string()).collect();
@@ -95,16 +97,17 @@ impl MySqlBackend {
                                 _ => (),
                             }
                         }
-                        debug!(
+                        /*debug!(
                             log,
                             "Inserting table {} with keys {:?} and cols {:?}",
                             name,
                             tab_keys,
                             tab_cols
-                        );
+                        );*/
 
+                        db.query_drop(stmt).unwrap();
                         tables.insert(name.to_string(), (tab_keys, tab_cols));
-                    }*/
+                    }
                 }
                 stmt = String::new();
                 is_query = false;
