@@ -85,7 +85,7 @@ pub(crate) fn leclist(
             id: from_value(r[0].clone()),
             label: from_value(r[1].clone()),
             num_qs: if r[2] == Value::NULL {
-                0u64 
+                0u64
             } else {
                 from_value(r[2].clone())
             },

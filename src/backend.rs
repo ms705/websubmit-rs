@@ -66,7 +66,7 @@ impl MySqlBackend {
                     let prepstmt = db.prep(query).unwrap();
                     queries.insert(name.to_string(), prepstmt);
                 } else {
-                    let dialect = sqlparser::dialect::GenericDialect {};
+                    let dialect = sqlparser::dialect::MySqlDialect {};
                     let asts = sqlparser::parser::Parser::parse_sql(&dialect, stmt.to_string())
                         .expect(&format!("could not parse stmt {}!", stmt));
                     if asts.len() != 1 {
