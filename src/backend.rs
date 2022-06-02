@@ -2,8 +2,8 @@ use mysql::prelude::*;
 use mysql::Opts;
 pub use mysql::Value;
 use mysql::*;
-use std::collections::HashMap;
 use sqlparser::ast::*;
+use std::collections::HashMap;
 
 pub struct MySqlBackend {
     pub handle: mysql::Conn,
@@ -12,7 +12,9 @@ pub struct MySqlBackend {
 
     // table name --> (keys, columns)
     tables: HashMap<String, (Vec<String>, Vec<String>)>,
-    queries: HashMap<String, mysql::Statement>,
+    queries: HashMap<String, String>,
+
+    prep_stmts: HashMap<String, mysql::Statement>,
 }
 
 impl MySqlBackend {
@@ -63,8 +65,7 @@ impl MySqlBackend {
                     let end_bytes = t.find(":").unwrap_or(t.len());
                     let name = &t[..end_bytes];
                     let query = &t[(end_bytes + 1)..];
-                    let prepstmt = db.prep(query).unwrap();
-                    queries.insert(name.to_string(), prepstmt);
+                    queries.insert(name.to_string(), query.to_string());
                 } else {
                     let dialect = sqlparser::dialect::MySqlDialect {};
                     let asts = sqlparser::parser::Parser::parse_sql(&dialect, stmt.to_string())
@@ -106,8 +107,8 @@ impl MySqlBackend {
                         );*/
 
                         if prime {
-                          // create the table
-                          db.query_drop(stmt).unwrap();
+                            // create the table
+                            db.query_drop(stmt).unwrap();
                         }
                         tables.insert(name.to_string(), (tab_keys, tab_cols));
                     }
@@ -124,15 +125,27 @@ impl MySqlBackend {
 
             tables: tables,
             queries: queries,
+            prep_stmts: HashMap::new(),
         })
     }
 
     pub fn query_exec(&mut self, qname: &str, keys: Vec<Value>) -> Vec<Vec<Value>> {
-        let q = self.queries.get(qname).unwrap();
+        let q = self.queries.get(qname).unwrap().clone();
+        self.prep_exec(&q, keys)
+    }
+
+    pub fn prep_exec(&mut self, sql: &str, params: Vec<Value>) -> Vec<Vec<Value>> {
+        if !self.prep_stmts.contains_key(sql) {
+            let stmt = self
+                .handle
+                .prep(sql)
+                .expect(&format!("failed to prepare statement \'{}\'", sql));
+            self.prep_stmts.insert(sql.to_owned(), stmt);
+        }
         let res = self
             .handle
-            .exec_iter(q, keys)
-            .expect(&format!("failed to select from {}", qname));
+            .exec_iter(self.prep_stmts[sql].clone(), params)
+            .expect(&format!("query \'{}\' failed", sql));
         let mut rows = vec![];
         for row in res {
             let rowvals = row.unwrap().unwrap();

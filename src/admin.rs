@@ -93,7 +93,10 @@ pub(crate) fn lec_add_submit(
 #[get("/<num>")]
 pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>>) -> Template {
     let mut bg = backend.lock().unwrap();
-    let res = bg.query_exec("qs_by_lec", vec![(num as u64).into()]);
+    let res = bg.prep_exec(
+        "SELECT * FROM questions WHERE lec = ?",
+        vec![(num as u64).into()],
+    );
     drop(bg);
     let mut qs: Vec<_> = res
         .into_iter()
@@ -145,7 +148,10 @@ pub(crate) fn editq(
     backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
-    let res = bg.query_exec("qs_by_lec", vec![(num as u64).into()]);
+    let res = bg.prep_exec(
+        "SELECT * FROM questions WHERE lec = ?",
+        vec![(num as u64).into()],
+    );
     drop(bg);
 
     let mut ctx = HashMap::new();
@@ -207,4 +213,3 @@ pub(crate) fn get_registered_users(
     };
     Template::render("admin/users", &ctx)
 }
-
