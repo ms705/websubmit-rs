@@ -10,8 +10,8 @@ use rocket::form::{Form, FromForm};
 use rocket::response::Redirect;
 use rocket::State;
 use rocket_dyn_templates::Template;
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 //pub(crate) enum LectureQuestionFormError {
 //   Invalid,
