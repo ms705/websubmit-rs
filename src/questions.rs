@@ -73,7 +73,12 @@ pub(crate) fn leclist(
     config: &State<Config>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
-    let res = bg.query_exec("leclist", vec![]);//vec![(0 as u64).into()]);
+    let res = bg.prep_exec(
+        "SELECT lectures.id, lectures.label, lec_qcount.qcount \
+         FROM lectures \
+         LEFT JOIN lec_qcount ON (lectures.id = lec_qcount.lec)",
+        vec![],
+    );
     drop(bg);
 
     let user = apikey.user.clone();
@@ -110,7 +115,7 @@ pub(crate) fn answers(
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let key: Value = (num as u64).into();
-    let res = bg.query_exec("answers_by_lec", vec![key]);
+    let res = bg.prep_exec("SELECT * FROM answers WHERE lec = ?", vec![key]);
     drop(bg);
     let answers: Vec<_> = res
         .into_iter()
@@ -145,8 +150,8 @@ pub(crate) fn questions(
     let mut bg = backend.lock().unwrap();
     let key: Value = (num as u64).into();
 
-    let answers_res = bg.query_exec(
-        "my_answers_for_lec",
+    let answers_res = bg.prep_exec(
+        "SELECT answers.* FROM answers WHERE answers.lec = ? AND answers.email = ?",
         vec![(num as u64).into(), apikey.user.clone().into()],
     );
     let mut answers = HashMap::new();
@@ -156,7 +161,7 @@ pub(crate) fn questions(
         let atext: String = from_value(r[3].clone());
         answers.insert(id, atext);
     }
-    let res = bg.query_exec("qs_by_lec", vec![key]);
+    let res = bg.prep_exec("SELECT * FROM questions WHERE lec = ?", vec![key]);
     drop(bg);
     let mut qs: Vec<_> = res
         .into_iter()

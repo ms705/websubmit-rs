@@ -191,7 +191,7 @@ pub(crate) fn get_registered_users(
     config: &State<Config>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
-    let res = bg.query_exec("all_users", vec![]);
+    let res = bg.prep_exec("SELECT email, is_admin, apikey FROM users", vec![]);
     drop(bg);
 
     let users: Vec<_> = res

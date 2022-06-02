@@ -113,7 +113,7 @@ pub(crate) fn check_api_key(
     key: &str,
 ) -> Result<String, ApiKeyError> {
     let mut bg = backend.lock().unwrap();
-    let rs = bg.query_exec("users_by_apikey", vec![key.into()]);
+    let rs = bg.prep_exec("SELECT * FROM users WHERE apikey = ?", vec![key.into()]);
     drop(bg);
     if rs.len() < 1 {
         Err(ApiKeyError::Missing)

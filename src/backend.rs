@@ -12,7 +12,6 @@ pub struct MySqlBackend {
 
     // table name --> (keys, columns)
     tables: HashMap<String, (Vec<String>, Vec<String>)>,
-    queries: HashMap<String, String>,
 
     prep_stmts: HashMap<String, mysql::Statement>,
 }
@@ -39,16 +38,11 @@ impl MySqlBackend {
 
         // save table and query information
         let mut tables = HashMap::new();
-        let mut queries = HashMap::new();
         let mut stmt = String::new();
-        let mut is_query = false;
         let mut is_view = false;
         for line in schema.lines() {
             if line.starts_with("--") || line.is_empty() {
                 continue;
-            }
-            if line.starts_with("QUERY") {
-                is_query = true;
             }
             if line.starts_with("CREATE VIEW") {
                 is_view = true;
@@ -60,12 +54,6 @@ impl MySqlBackend {
             if stmt.ends_with(';') {
                 if is_view && prime {
                     db.query_drop(stmt).unwrap();
-                } else if is_query {
-                    let t = stmt.trim_start_matches("QUERY ");
-                    let end_bytes = t.find(":").unwrap_or(t.len());
-                    let name = &t[..end_bytes];
-                    let query = &t[(end_bytes + 1)..];
-                    queries.insert(name.to_string(), query.to_string());
                 } else {
                     let dialect = sqlparser::dialect::MySqlDialect {};
                     let asts = sqlparser::parser::Parser::parse_sql(&dialect, stmt.to_string())
@@ -114,7 +102,6 @@ impl MySqlBackend {
                     }
                 }
                 stmt = String::new();
-                is_query = false;
                 is_view = false;
             }
         }
@@ -124,14 +111,8 @@ impl MySqlBackend {
             _schema: schema.to_owned(),
 
             tables: tables,
-            queries: queries,
             prep_stmts: HashMap::new(),
         })
-    }
-
-    pub fn query_exec(&mut self, qname: &str, keys: Vec<Value>) -> Vec<Vec<Value>> {
-        let q = self.queries.get(qname).unwrap().clone();
-        self.prep_exec(&q, keys)
     }
 
     pub fn prep_exec(&mut self, sql: &str, params: Vec<Value>) -> Vec<Vec<Value>> {
