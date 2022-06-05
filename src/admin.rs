@@ -174,10 +174,13 @@ pub(crate) fn editq_submit(
     backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Redirect {
     let mut bg = backend.lock().unwrap();
-    bg.update(
-        "questions",
-        vec![(num as u64).into(), (data.q_id as u64).into()],
-        vec![(2, data.q_prompt.to_string().into())],
+    bg.prep_exec(
+        "UPDATE questions SET question = ? WHERE lec = ? AND q = ?",
+        vec![
+            data.q_prompt.to_string().into(),
+            (num as u64).into(),
+            (data.q_id as u64).into(),
+        ],
     );
     drop(bg);
 

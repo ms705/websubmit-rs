@@ -2,17 +2,12 @@ use mysql::prelude::*;
 use mysql::Opts;
 pub use mysql::Value;
 use mysql::*;
-use sqlparser::ast::*;
 use std::collections::HashMap;
 
 pub struct MySqlBackend {
     pub handle: mysql::Conn,
     pub log: slog::Logger,
     _schema: String,
-
-    // table name --> (keys, columns)
-    tables: HashMap<String, (Vec<String>, Vec<String>)>,
-
     prep_stmts: HashMap<String, mysql::Statement>,
 }
 
@@ -25,7 +20,6 @@ impl MySqlBackend {
 
         let schema = std::fs::read_to_string("src/schema.sql")?;
 
-        // connect to everything
         debug!(
             log,
             "Connecting to MySql DB and initializing schema {}...", dbname
@@ -36,81 +30,19 @@ impl MySqlBackend {
         .unwrap();
         assert_eq!(db.ping(), true);
 
-        // save table and query information
-        let mut tables = HashMap::new();
-        let mut stmt = String::new();
-        let mut is_view = false;
-        for line in schema.lines() {
-            if line.starts_with("--") || line.is_empty() {
-                continue;
-            }
-            if line.starts_with("CREATE VIEW") {
-                is_view = true;
-            }
-            if !stmt.is_empty() {
-                stmt.push_str(" ");
-            }
-            stmt.push_str(line);
-            if stmt.ends_with(';') {
-                if is_view && prime {
-                    db.query_drop(stmt).unwrap();
-                } else {
-                    let dialect = sqlparser::dialect::MySqlDialect {};
-                    let asts = sqlparser::parser::Parser::parse_sql(&dialect, stmt.to_string())
-                        .expect(&format!("could not parse stmt {}!", stmt));
-                    if asts.len() != 1 {
-                        panic!("More than one stmt {:?}", asts);
-                    }
-                    let parsed = &asts[0];
-
-                    if let sqlparser::ast::Statement::CreateTable {
-                        name,
-                        columns,
-                        constraints,
-                        ..
-                    } = parsed
-                    {
-                        let mut tab_keys = vec![];
-                        let tab_cols = columns.iter().map(|c| c.name.to_string()).collect();
-                        for constraint in constraints {
-                            match constraint {
-                                TableConstraint::Unique {
-                                    columns,
-                                    is_primary,
-                                    ..
-                                } => {
-                                    if *is_primary {
-                                        columns.iter().for_each(|c| tab_keys.push(c.to_string()));
-                                    }
-                                }
-                                _ => (),
-                            }
-                        }
-                        /*debug!(
-                            log,
-                            "Inserting table {} with keys {:?} and cols {:?}",
-                            name,
-                            tab_keys,
-                            tab_cols
-                        );*/
-
-                        if prime {
-                            // create the table
-                            db.query_drop(stmt).unwrap();
-                        }
-                        tables.insert(name.to_string(), (tab_keys, tab_cols));
-                    }
+        if prime {
+            for line in schema.lines() {
+                if line.starts_with("--") || line.is_empty() {
+                    continue;
                 }
-                stmt = String::new();
-                is_view = false;
+                db.query_drop(line).unwrap();
             }
         }
+
         Ok(MySqlBackend {
             handle: db,
             log: log,
             _schema: schema.to_owned(),
-
-            tables: tables,
             prep_stmts: HashMap::new(),
         })
     }
@@ -133,82 +65,29 @@ impl MySqlBackend {
             let vals: Vec<Value> = rowvals.iter().map(|v| v.clone().into()).collect();
             rows.push(vals);
         }
-        /*debug!(
-            self.log,
-            "executed query {}, got {} rows",
-            qname,
-            rows.len()
-        );*/
+        debug!(self.log, "executed query {}, got {} rows", sql, rows.len());
         return rows;
     }
 
-    pub fn insert(&mut self, table: &str, vals: Vec<Value>) {
-        let valstrs: Vec<&str> = vals.iter().map(|_| "?").collect();
-        let q = format!(r"INSERT INTO {} VALUES ({});", table, valstrs.join(","));
+    fn do_insert(&mut self, table: &str, vals: Vec<Value>, replace: bool) {
+        let op = if replace { "REPLACE" } else { "INSERT" };
+        let q = format!(
+            "{} INTO {} VALUES ({})",
+            op,
+            table,
+            vals.iter().map(|_| "?").collect::<Vec<&str>>().join(",")
+        );
+        debug!(self.log, "executed insert query {} for row {:?}", q, vals);
         self.handle
             .exec_drop(q.clone(), vals)
             .expect(&format!("failed to insert into {}, query {}!", table, q));
     }
 
-    pub fn update(&mut self, table: &str, keys: Vec<Value>, vals: Vec<(usize, Value)>) {
-        let (key_cols, cols) = self
-            .tables
-            .get(table)
-            .expect(&format!("Incorrect table in update? {}", table));
-        let mut assignments = vec![];
-        let mut args = vec![];
-        for (index, value) in vals {
-            assignments.push(format!("{} = ?", cols[index],));
-            args.push(value.clone());
-        }
-        let mut conds = vec![];
-        for (i, value) in keys.iter().enumerate() {
-            conds.push(format!("{} = ?", key_cols[i],));
-            args.push(value.clone());
-        }
-        let q = format!(
-            r"UPDATE {} SET {} WHERE {};",
-            table,
-            assignments.join(","),
-            conds.join(" AND ")
-        );
-        self.handle
-            .exec_drop(q.clone(), args)
-            .expect(&format!("failed to update {}, query {}!", table, q));
+    pub fn insert(&mut self, table: &str, vals: Vec<Value>) {
+        self.do_insert(table, vals, false);
     }
 
-    pub fn insert_or_update(
-        &mut self,
-        table: &str,
-        rec: Vec<Value>,
-        update_vals: Vec<(u64, Value)>,
-    ) {
-        let (_, cols) = self
-            .tables
-            .get(table)
-            .expect(&format!("Incorrect table in update? {}", table));
-        let mut args = vec![];
-        let recstrs: Vec<&str> = rec
-            .iter()
-            .map(|v| {
-                args.push(v.clone());
-                "?"
-            })
-            .collect();
-        let mut assignments = vec![];
-        for (index, value) in update_vals {
-            assignments.push(format!("{} = ?", cols[index as usize],));
-            args.push(value.clone());
-        }
-
-        let q = format!(
-            r"INSERT INTO {} VALUES ({}) ON DUPLICATE KEY UPDATE {};",
-            table,
-            recstrs.join(","),
-            assignments.join(","),
-        );
-        self.handle
-            .exec_drop(q.clone(), args)
-            .expect(&format!("failed to insert-update {}, query {}!", table, q));
+    pub fn replace(&mut self, table: &str, vals: Vec<Value>) {
+        self.do_insert(table, vals, true);
     }
 }

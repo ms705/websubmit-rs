@@ -2882,14 +2882,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
 
 [[package]]
-name = "sqlparser"
-version = "0.4.1-alpha.0"
-source = "git+https://github.com/MaterializeInc/sqlparser.git#94341cc10c4cafa8d19526cbc148ffe203398c70"
-dependencies = [
- "log",
-]
-
-[[package]]
 name = "stable-pattern"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3625,7 +3617,6 @@ dependencies = [
  "serde_json",
  "slog",
  "slog-term",
- "sqlparser",
  "toml 0.2.1",
 ]
 

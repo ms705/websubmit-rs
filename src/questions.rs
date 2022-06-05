@@ -205,11 +205,7 @@ pub(crate) fn questions_submit(
             answer.clone().into(),
             ts.clone(),
         ];
-        bg.insert_or_update(
-            "answers",
-            rec,
-            vec![(3, answer.clone().into()), (4, ts.clone())],
-        );
+        bg.replace("answers", rec);
     }
 
     let answer_log = format!(
