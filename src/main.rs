@@ -1,7 +1,5 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
 extern crate clap;
-extern crate crypto;
+extern crate mysql;
 #[macro_use]
 extern crate rocket;
 extern crate lettre;
@@ -21,11 +19,12 @@ mod email;
 mod login;
 mod questions;
 
-use backend::NoriaBackend;
-use rocket::http::Cookies;
+use backend::MySqlBackend;
+//use rocket::fs::FileServer;
+use rocket::http::CookieJar;
 use rocket::response::Redirect;
 use rocket::State;
-use rocket_contrib::templates::Template;
+use rocket_dyn_templates::Template;
 use std::sync::{Arc, Mutex};
 
 pub fn new_logger() -> slog::Logger {
@@ -36,7 +35,7 @@ pub fn new_logger() -> slog::Logger {
 }
 
 #[get("/")]
-fn index(cookies: Cookies, backend: State<Arc<Mutex<NoriaBackend>>>) -> Redirect {
+fn index(cookies: &CookieJar<'_>, backend: &State<Arc<Mutex<MySqlBackend>>>) -> Redirect {
     if let Some(cookie) = cookies.get("apikey") {
         let apikey: String = cookie.value().parse().ok().unwrap();
         // TODO validate API key
@@ -49,37 +48,24 @@ fn index(cookies: Cookies, backend: State<Arc<Mutex<NoriaBackend>>>) -> Redirect
     }
 }
 
-fn main() {
-    use rocket_contrib::serve::StaticFiles;
-    use rocket_contrib::templates::Engines;
-    use std::path::Path;
-
+#[rocket::main]
+async fn main() {
     let args = args::parse_args();
-
-    let backend = Arc::new(Mutex::new(
-        NoriaBackend::new(
-            &format!("127.0.0.1:2181/{}", args.class),
-            Some(new_logger()),
-        )
-        .unwrap(),
-    ));
-
     let config = args.config;
 
-    let template_dir = config.template_dir.clone();
-    let resource_dir = config.resource_dir.clone();
+    let backend = Arc::new(Mutex::new(
+        MySqlBackend::new(&format!("{}", args.class), Some(new_logger()), config.prime).unwrap(),
+    ));
 
-    rocket::ignite()
-        .attach(Template::custom(move |engines: &mut Engines| {
-            engines
-                .handlebars
-                .register_templates_directory(".hbs", Path::new(&template_dir))
-                .expect("failed to set template path!");
-        }))
+    //let template_dir = config.template_dir.clone();
+    //let resource_dir = config.resource_dir.clone();
+
+    if let Err(e) = rocket::build()
+        .attach(Template::fairing())
         .manage(backend)
         .manage(config)
-        .mount("/css", StaticFiles::from(format!("{}/css", resource_dir)))
-        .mount("/js", StaticFiles::from(format!("{}/js", resource_dir)))
+        //.mount("/css", FileServer::from(format!("{}/css", resource_dir)))
+        //.mount("/js", FileServer::from(format!("{}/js", resource_dir)))
         .mount("/", routes![index])
         .mount(
             "/questions",
@@ -99,5 +85,10 @@ fn main() {
             "/admin/lec",
             routes![admin::lec, admin::addq, admin::editq, admin::editq_submit],
         )
-        .launch();
+        .launch()
+        .await
+    {
+        println!("Whoops, didn't launch!");
+        drop(e);
+    };
 }

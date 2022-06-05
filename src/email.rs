@@ -3,6 +3,7 @@ use lettre::Transport;
 use lettre_email::Email;
 
 pub(crate) fn send(
+    log: slog::Logger,
     sender: String,
     recipients: Vec<String>,
     subject: String,
@@ -11,12 +12,15 @@ pub(crate) fn send(
     let mut mailer = SendmailTransport::new();
 
     let mut builder = Email::builder()
-            .from(sender.clone())
-            .subject(subject.clone())
-            .text(text.clone());
+        .from(sender.clone())
+        .subject(subject.clone())
+        .text(text.clone());
     for recipient in recipients {
         builder = builder.to(recipient);
     }
+
+    debug!(log, "Email: Subject {}\nText: {}!", subject, text);
+
     let email = builder.build();
     match email {
         Ok(result) => mailer.send(result.into())?,

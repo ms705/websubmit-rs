@@ -1,16 +1,12 @@
 # websubmit-rs: a simple class submission system
 
-This is a work-in-progress web application for collecting student homework
+This is a fork for websubmit-rs, a web application for collecting student homework
 submissions, written using [Rocket](https://rocket.rs) for a
-[Noria](https://pdos.csail.mit.edu/noria) backend.
+MySQL (instead of Noria) backend.
 
-To run it, you need to run a Noria server deployment (note that this
-requires installing Zookeeper on your machine):
-```
-noria$ cargo run --release --bin noria-server -- --deployment myclass
-```
+To run it, you need to run a MySQL server deployment.
 Then you can run the web application, which will automatically connect
-to Noria deployment `myclass`:
+to MySQL database `myclass`:
 ```
 websubmit-rs$ cargo run --release -- -i myclass
 ```
@@ -36,6 +32,6 @@ secret = "SECRET"
 send_emails = false
 ```
 
-If you omit `--release`, both Noria and the web app produce additional
+If you omit `--release`, the web app will produce additional
 debugging output.
 

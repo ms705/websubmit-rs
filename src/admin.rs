@@ -1,14 +1,15 @@
 use crate::apikey::ApiKey;
-use crate::backend::NoriaBackend;
+use crate::backend::MySqlBackend;
 use crate::config::Config;
 use crate::questions::{LectureQuestion, LectureQuestionsContext};
+use mysql::from_value;
+use rocket::form::Form;
 use rocket::http::Status;
 use rocket::outcome::IntoOutcome;
-use rocket::request::Form;
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::Redirect;
 use rocket::State;
-use rocket_contrib::templates::Template;
+use rocket_dyn_templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -19,12 +20,13 @@ pub(crate) enum AdminError {
     Unauthorized,
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for Admin {
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for Admin {
     type Error = AdminError;
 
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<Admin, Self::Error> {
-        let apikey = request.guard::<ApiKey>().unwrap();
-        let cfg = request.guard::<State<Config>>().unwrap();
+    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let apikey = request.guard::<ApiKey>().await.unwrap();
+        let cfg = request.guard::<&State<Config>>().await.unwrap();
 
         let res = if cfg.admins.contains(&apikey.user) {
             Some(Admin)
@@ -72,36 +74,37 @@ pub(crate) fn lec_add(_adm: Admin) -> Template {
 pub(crate) fn lec_add_submit(
     _adm: Admin,
     data: Form<AdminLecAdd>,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
+    backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Redirect {
-    // insert into Noria if not exists
+    // insert into MySql if not exists
     let mut bg = backend.lock().unwrap();
-    let mut table = bg.handle.table("lectures").unwrap().into_sync();
-    table
-        .insert(vec![
+    bg.insert(
+        "lectures",
+        vec![
             (data.lec_id as u64).into(),
             data.lec_label.to_string().into(),
-        ])
-        .expect("failed to insert lecture!");
+        ],
+    );
+    drop(bg);
 
     Redirect::to("/leclist")
 }
 
 #[get("/<num>")]
-pub(crate) fn lec(_adm: Admin, num: u8, backend: State<Arc<Mutex<NoriaBackend>>>) -> Template {
+pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>>) -> Template {
     let mut bg = backend.lock().unwrap();
-    let mut view = bg.handle.view("qs_by_lec").unwrap().into_sync();
-    let res = view
-        .lookup(&[(num as u64).into()], true)
-        .expect("failed to read questions for lecture!");
-
+    let res = bg.prep_exec(
+        "SELECT * FROM questions WHERE lec = ?",
+        vec![(num as u64).into()],
+    );
+    drop(bg);
     let mut qs: Vec<_> = res
         .into_iter()
         .map(|r| {
-            let id: u64 = r[1].clone().into();
+            let id: u64 = from_value(r[1].clone());
             LectureQuestion {
                 id: id,
-                prompt: r[2].clone().into(),
+                prompt: from_value(r[2].clone()),
                 answer: None,
             }
         })
@@ -121,17 +124,18 @@ pub(crate) fn addq(
     _adm: Admin,
     num: u8,
     data: Form<AddLectureQuestionForm>,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
+    backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Redirect {
     let mut bg = backend.lock().unwrap();
-    let mut table = bg.handle.table("questions").unwrap().into_sync();
-    table
-        .insert(vec![
+    bg.insert(
+        "questions",
+        vec![
             (num as u64).into(),
             (data.q_id as u64).into(),
             data.q_prompt.to_string().into(),
-        ])
-        .expect("failed to add question!");
+        ],
+    );
+    drop(bg);
 
     Redirect::to(format!("/admin/lec/{}", num))
 }
@@ -141,24 +145,25 @@ pub(crate) fn editq(
     _adm: Admin,
     num: u8,
     qnum: u8,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
+    backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
-    let mut view = bg.handle.view("qs_by_lec").unwrap().into_sync();
-    let res = view
-        .lookup(&[(num as u64).into()], true)
-        .expect("failed to read questions for lecture!");
+    let res = bg.prep_exec(
+        "SELECT * FROM questions WHERE lec = ?",
+        vec![(num as u64).into()],
+    );
+    drop(bg);
 
     let mut ctx = HashMap::new();
     for r in res {
         if r[1] == (qnum as u64).into() {
-            ctx.insert("lec_qprompt", r[2].clone().into());
+            ctx.insert("lec_qprompt", from_value(r[2].clone()));
         }
     }
     ctx.insert("lec_id", format!("{}", num));
     ctx.insert("lec_qnum", format!("{}", qnum));
     ctx.insert("parent", String::from("layout"));
-    Template::render("admin/lec_edit", &ctx)
+    Template::render("admin/lecedit", &ctx)
 }
 
 #[post("/editq/<num>", data = "<data>")]
@@ -166,18 +171,18 @@ pub(crate) fn editq_submit(
     _adm: Admin,
     num: u8,
     data: Form<AddLectureQuestionForm>,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
+    backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Redirect {
-    use noria::Modification;
-
     let mut bg = backend.lock().unwrap();
-    let mut table = bg.handle.table("questions").unwrap().into_sync();
-    table
-        .update(
-            vec![(num as u64).into(), (data.q_id as u64).into()],
-            vec![(2, Modification::Set(data.q_prompt.to_string().into()))],
-        )
-        .expect("failed to update question!");
+    bg.prep_exec(
+        "UPDATE questions SET question = ? WHERE lec = ? AND q = ?",
+        vec![
+            data.q_prompt.to_string().into(),
+            (num as u64).into(),
+            (data.q_id as u64).into(),
+        ],
+    );
+    drop(bg);
 
     Redirect::to(format!("/admin/lec/{}", num))
 }
@@ -185,23 +190,19 @@ pub(crate) fn editq_submit(
 #[get("/")]
 pub(crate) fn get_registered_users(
     _adm: Admin,
-    backend: State<Arc<Mutex<NoriaBackend>>>,
-    config: State<Config>,
+    backend: &State<Arc<Mutex<MySqlBackend>>>,
+    config: &State<Config>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
-    let mut h = bg.handle.view("all_users").unwrap().into_sync();
-
-    // 0 is a bogokey
-    let res = h
-        .lookup(&[(0 as u64).into()], true)
-        .expect("lecture list lookup failed");
+    let res = bg.prep_exec("SELECT email, is_admin, apikey FROM users", vec![]);
+    drop(bg);
 
     let users: Vec<_> = res
         .into_iter()
         .map(|r| User {
-            email: r[0].clone().into(),
-            apikey: r[2].clone().into(),
-            is_admin: if config.admins.contains(&r[0].clone().into()) {
+            email: from_value(r[0].clone()),
+            apikey: from_value(r[2].clone()),
+            is_admin: if config.admins.contains(&from_value(r[0].clone())) {
                 1
             } else {
                 0
