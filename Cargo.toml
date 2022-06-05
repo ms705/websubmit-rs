@@ -9,7 +9,7 @@ chrono = { version = "0.4.0", features = ["serde"] }
 clap = "2.33.0"
 lettre = "0.9.2"
 lettre_email = "0.9.2"
-mysql = "*"
+mysql = "21.0.1"
 mysql_common = "0.22"
 rand = "0.8.4"
 rocket = "0.5.0-rc.1"
