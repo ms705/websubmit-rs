@@ -31,6 +31,15 @@ impl MySqlBackend {
         assert_eq!(db.ping(), true);
 
         if prime {
+            db.query_drop(format!("DROP DATABASE IF EXISTS {};", dbname))
+                .unwrap();
+            db.query_drop(format!("CREATE DATABASE {};", dbname))
+                .unwrap();
+            // reconnect
+            db = mysql::Conn::new(
+                Opts::from_url(&format!("mysql://root:password@127.0.0.1/{}", dbname)).unwrap(),
+            )
+            .unwrap();
             for line in schema.lines() {
                 if line.starts_with("--") || line.is_empty() {
                     continue;

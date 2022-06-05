@@ -1,8 +1,7 @@
 # websubmit-rs: a simple class submission system
 
 This is a fork for websubmit-rs, a web application for collecting student homework
-submissions, written using [Rocket](https://rocket.rs) for a
-MySQL (instead of Noria) backend.
+submissions, written using [Rocket](https://rocket.rs) for a MySQL backend.
 
 To run it, you need to run a MySQL server deployment.
 Then you can run the web application, which will automatically connect
@@ -10,6 +9,9 @@ to MySQL database `myclass`:
 ```
 websubmit-rs$ cargo run --release -- -i myclass
 ```
+To create and initialize the database, set the `prime` variable in the configuration
+file (see below).
+
 The web interface will be served on `localhost:8000`. Note that the
 templates included in this repository are very basic; in practice, you
 will want to customize the files in `templates`.
@@ -30,6 +32,8 @@ resource_dir = "/path/to/resources"
 secret = "SECRET"
 # whether to send emails (set to false for development)
 send_emails = false
+# whether to reset the db (set to false for production)
+prime = true
 ```
 
 If you omit `--release`, the web app will produce additional
