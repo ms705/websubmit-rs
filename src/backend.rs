@@ -32,12 +32,6 @@ impl MySqlBackend {
         assert_eq!(db.ping(), true);
 
         if prime {
-            //note remember to fix this
-            //db.query_drop(format!("DROP DATABASE IF EXISTS {};", dbname))
-            //    .unwrap();
-            //db.query_drop(format!("CREATE DATABASE {};", dbname))
-            //    .unwrap();
-            // reconnect
             db = mysql::Conn::new(
                 Opts::from_url(&format!("mysql://pelton:password@127.0.0.1:10001/{}", dbname)).unwrap(),
             )
@@ -85,33 +79,12 @@ impl MySqlBackend {
         //changes to be made here
         let mut insert_vals = String::new(); 
         let temp = vals.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
-        // let mut vals2 = Vec::new();
-        // //debug!(self.log, "HEREtmp {}", temp);
-        // if table == "questions" {
-        //     let vv = vals[0..2].to_vec();
-        //     //let key = vv.iter().map(|_| "?").collect::<Vec<&str>>().join("-");
-        //     //insert_vals += "test"; //for testing purposes  //&key.to_string();
-        //     //insert_vals += ",";
-        //     //insert_vals += &temp.to_string();
-        //     insert_vals += "1, 1, 1, 1";
-        //     vals2 = vec![1, 1, 1, 1];
-        // } else if table == "answers" {
-        //     let vv = vals[0..3].to_vec();
-        //     let key = vv.iter().map(|_| "?").collect::<Vec<&str>>().join("-");
-        //     insert_vals += &key;
-        //     insert_vals += ",";
-        //     insert_vals += &temp;
-        // } else {
         insert_vals += &temp;
-            //vals2 = vals;
-        //}
-        //debug!(self.log, "HERE {}", insert_vals);
         let q = format!(
             "{} INTO {} VALUES ({})",
             op,
             table,
             insert_vals
-            //vals.iter().map(|_| "?").collect::<Vec<&str>>().join(",")
         );
         debug!(self.log, "executed insert query {} for row {:?}", q, vals);
         self.handle
@@ -120,64 +93,10 @@ impl MySqlBackend {
     }
 
     pub fn insert(&mut self, table: &str, vals: Vec<Value>) {
-        // if table == "questions" {
-        //     let vals2 = vals[0..2].to_vec();
-        //     let vals2_unwrapped: Vec<i64> = vals2.iter().map(|x| from_value(x.clone())).collect::<Vec<i64>>();
-        //     let key = vals2_unwrapped.iter().map(|x| format!("{}", x)).collect::<Vec<String>>().join("-");
-        //     let key_as_bytes: Vec<u8> = key.as_bytes().to_vec();
-        //     let mut vals_m = vals;
-        //     let mut new_vals : Vec<Value> = Vec::new(); 
-        //     new_vals.push(mysql::Value::Bytes(key_as_bytes)); 
-        //     new_vals.append(&mut vals_m);
-        //     self.do_insert(table, new_vals, false);
-        // } else if table == "answers" {
-        //     let unwrapped1:Vec<u8> = from_value(vals[0].clone());
-        //     let unwrapped2:i64 = from_value(vals[1].clone());
-        //     let unwrapped3:i64 = from_value(vals[2].clone());
-            
-        //     let email_string: String = String::from_utf8(unwrapped1).unwrap();
-        //     let key = format!("{}-{}-{}", email_string, unwrapped2, unwrapped3);
-        //     // let vals3 = vals[0..3].to_vec();
-        //     // let key = vals3.iter().map(|_| "?").collect::<Vec<&str>>().join("-");
-        //     let key_as_bytes: Vec<u8> = key.as_bytes().to_vec();
-        //     let mut vals_m = vals;
-        //     let mut new_vals : Vec<Value> = Vec::new(); 
-        //     new_vals.push(mysql::Value::Bytes(key_as_bytes)); 
-        //     new_vals.append(&mut vals_m);
-        //     self.do_insert(table, new_vals, false);
-        //} else {
-            self.do_insert(table, vals, false);
-        //}
+        self.do_insert(table, vals, false);
     }
 
     pub fn replace(&mut self, table: &str, vals: Vec<Value>) {
-        // if table == "questions" {
-        //     let vals2 = vals[0..2].to_vec();
-        //     let vals2_unwrapped: Vec<i64> = vals2.iter().map(|x| from_value(x.clone())).collect::<Vec<i64>>();
-        //     let key = vals2_unwrapped.iter().map(|x| format!("{}", x)).collect::<Vec<String>>().join("-");
-        //     let key_as_bytes: Vec<u8> = key.as_bytes().to_vec();
-        //     let mut vals_m = vals;
-        //     let mut new_vals : Vec<Value> = Vec::new(); 
-        //     new_vals.push(mysql::Value::Bytes(key_as_bytes)); 
-        //     new_vals.append(&mut vals_m);
-        //     self.do_insert(table, new_vals, true);
-        // } else if table == "answers" {
-        //     let unwrapped1:Vec<u8> = from_value(vals[0].clone());
-        //     let unwrapped2:i64 = from_value(vals[1].clone());
-        //     let unwrapped3:i64 = from_value(vals[2].clone());
-            
-        //     let email_string: String = String::from_utf8(unwrapped1).unwrap();
-        //     let key = format!("{}-{}-{}", email_string, unwrapped2, unwrapped3);
-        //     // let vals3 = vals[0..3].to_vec();
-        //     // let key = vals3.iter().map(|_| "?").collect::<Vec<&str>>().join("-");
-        //     let key_as_bytes: Vec<u8> = key.as_bytes().to_vec();
-        //     let mut vals_m = vals;
-        //     let mut new_vals : Vec<Value> = Vec::new(); 
-        //     new_vals.push(mysql::Value::Bytes(key_as_bytes)); 
-        //     new_vals.append(&mut vals_m);
-        //     self.do_insert(table, new_vals, true);
-        // } else {
             self.do_insert(table, vals, true);
-        //}
     }
 }
