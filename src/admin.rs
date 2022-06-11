@@ -94,7 +94,7 @@ pub(crate) fn lec_add_submit(
 pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>>) -> Template {
     let mut bg = backend.lock().unwrap();
     let res = bg.prep_exec(
-        "SELECT * FROM questions WHERE lec = ?",
+        "SELECT lec , q , question FROM questions WHERE lec = ?",
         vec![(num as u64).into()],
     );
     drop(bg);
@@ -130,6 +130,7 @@ pub(crate) fn addq(
     bg.insert(
         "questions",
         vec![
+            format!("{}-{}", num, data.q_id).into(),
             (num as u64).into(),
             (data.q_id as u64).into(),
             data.q_prompt.to_string().into(),
@@ -149,7 +150,7 @@ pub(crate) fn editq(
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let res = bg.prep_exec(
-        "SELECT * FROM questions WHERE lec = ?",
+        "SELECT lec , q , question FROM questions WHERE lec = ?",
         vec![(num as u64).into()],
     );
     drop(bg);
@@ -194,7 +195,7 @@ pub(crate) fn get_registered_users(
     config: &State<Config>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
-    let res = bg.prep_exec("SELECT email, is_admin, apikey FROM users", vec![]);
+    let res = bg.prep_exec("SELECT PII_email, is_admin, apikey FROM users", vec![]);
     drop(bg);
 
     let users: Vec<_> = res

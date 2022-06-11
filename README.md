@@ -1,11 +1,11 @@
 # websubmit-rs: a simple class submission system
 
 This is a fork for websubmit-rs, a web application for collecting student homework
-submissions, written using [Rocket](https://rocket.rs) for a MySQL backend.
+submissions, written using [Rocket](https://rocket.rs) running on a GDPR compliant Pelton backend.
 
-To run it, you need to run a MySQL server deployment.
+To run it, you need to run a Pelton server deployment.
 Then you can run the web application, which will automatically connect
-to MySQL database `myclass`:
+to Pelton database `myclass`:
 ```
 websubmit-rs$ cargo run --release -- -i myclass
 ```
