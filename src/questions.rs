@@ -123,7 +123,7 @@ pub(crate) fn answers(
             id: from_value(r[2].clone()),
             user: from_value(r[0].clone()),
             answer: from_value(r[3].clone()),
-            time:  NaiveDateTime::parse_from_str(&String::from_utf8(from_value::<Vec<u8>>(r[4].clone())).unwrap(), "%Y-%m-%d %H:%M:%S").ok()
+            time:  NaiveDateTime::parse_from_str(&String::from_utf8(from_value::<Vec<u8>>(r[4].clone())).unwrap().chars().collect::<Vec<char>>()[..19].iter().collect::<String>(), "%Y-%m-%d %H:%M:%S").ok()
         })
         .collect();
     let ctx = LectureAnswersContext {

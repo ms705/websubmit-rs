@@ -76,15 +76,11 @@ impl MySqlBackend {
 
     fn do_insert(&mut self, table: &str, vals: Vec<Value>, replace: bool) {
         let op = if replace { "REPLACE" } else { "INSERT" };
-        //changes to be made here
-        let mut insert_vals = String::new(); 
-        let temp = vals.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
-        insert_vals += &temp;
         let q = format!(
             "{} INTO {} VALUES ({})",
             op,
             table,
-            insert_vals
+            vals.iter().map(|_| "?").collect::<Vec<&str>>().join(",")
         );
         debug!(self.log, "executed insert query {} for row {:?}", q, vals);
         self.handle
@@ -97,6 +93,6 @@ impl MySqlBackend {
     }
 
     pub fn replace(&mut self, table: &str, vals: Vec<Value>) {
-            self.do_insert(table, vals, true);
+        self.do_insert(table, vals, true);
     }
 }
