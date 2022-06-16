@@ -4,6 +4,7 @@ pub use mysql::Value;
 use mysql::*;
 use std::collections::HashMap;
 
+
 pub struct MySqlBackend {
     pub handle: mysql::Conn,
     pub log: slog::Logger,
@@ -25,19 +26,14 @@ impl MySqlBackend {
             "Connecting to MySql DB and initializing schema {}...", dbname
         );
         let mut db = mysql::Conn::new(
-            Opts::from_url(&format!("mysql://root:password@127.0.0.1/{}", dbname)).unwrap(),
+            Opts::from_url(&format!("mysql://pelton:password@127.0.0.1:10001/{}", dbname)).unwrap(),
         )
         .unwrap();
         assert_eq!(db.ping(), true);
 
         if prime {
-            db.query_drop(format!("DROP DATABASE IF EXISTS {};", dbname))
-                .unwrap();
-            db.query_drop(format!("CREATE DATABASE {};", dbname))
-                .unwrap();
-            // reconnect
             db = mysql::Conn::new(
-                Opts::from_url(&format!("mysql://root:password@127.0.0.1/{}", dbname)).unwrap(),
+                Opts::from_url(&format!("mysql://pelton:password@127.0.0.1:10001/{}", dbname)).unwrap(),
             )
             .unwrap();
             for line in schema.lines() {

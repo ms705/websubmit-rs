@@ -115,7 +115,7 @@ pub(crate) fn answers(
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let key: Value = (num as u64).into();
-    let res = bg.prep_exec("SELECT * FROM answers WHERE lec = ?", vec![key]);
+    let res = bg.prep_exec("SELECT email, lec, q, answer, submitted_at FROM answers WHERE lec = ?", vec![key]);
     drop(bg);
     let answers: Vec<_> = res
         .into_iter()
@@ -123,14 +123,9 @@ pub(crate) fn answers(
             id: from_value(r[2].clone()),
             user: from_value(r[0].clone()),
             answer: from_value(r[3].clone()),
-            time: if let Value::Time(..) = r[4] {
-                Some(from_value::<NaiveDateTime>(r[4].clone()))
-            } else {
-                None
-            },
+            time:  NaiveDateTime::parse_from_str(&String::from_utf8(from_value::<Vec<u8>>(r[4].clone())).unwrap().chars().collect::<Vec<char>>()[..19].iter().collect::<String>(), "%Y-%m-%d %H:%M:%S").ok()
         })
         .collect();
-
     let ctx = LectureAnswersContext {
         lec_id: num,
         answers: answers,
@@ -151,7 +146,7 @@ pub(crate) fn questions(
     let key: Value = (num as u64).into();
 
     let answers_res = bg.prep_exec(
-        "SELECT answers.* FROM answers WHERE answers.lec = ? AND answers.email = ?",
+        "SELECT answers.email, answers.lec, answers.q, answers.answer, answers.submitted_at FROM answers WHERE answers.lec = ? AND answers.email = ?",
         vec![(num as u64).into(), apikey.user.clone().into()],
     );
     let mut answers = HashMap::new();
@@ -161,7 +156,7 @@ pub(crate) fn questions(
         let atext: String = from_value(r[3].clone());
         answers.insert(id, atext);
     }
-    let res = bg.prep_exec("SELECT * FROM questions WHERE lec = ?", vec![key]);
+    let res = bg.prep_exec("SELECT lec , q , question  FROM questions WHERE lec = ?", vec![key]);
     drop(bg);
     let mut qs: Vec<_> = res
         .into_iter()
@@ -195,10 +190,11 @@ pub(crate) fn questions_submit(
 ) -> Redirect {
     let mut bg = backend.lock().unwrap();
     let vnum: Value = (num as u64).into();
-    let ts: Value = Local::now().naive_local().into();
+    let ts: Value = Local::now().naive_local().to_string().into();
 
     for (id, answer) in &data.answers {
         let rec: Vec<Value> = vec![
+            format!("{}-{}-{}", apikey.user.clone(), num, (*id)).into(),
             apikey.user.clone().into(),
             vnum.clone(),
             (*id).into(),
