@@ -13,10 +13,6 @@ use rocket_dyn_templates::Template;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-//pub(crate) enum LectureQuestionFormError {
-//   Invalid,
-//}
-
 #[derive(Debug, FromForm)]
 pub(crate) struct LectureQuestionSubmission {
     answers: HashMap<u64, String>,
@@ -32,6 +28,8 @@ pub(crate) struct LectureQuestion {
 #[derive(Serialize)]
 pub(crate) struct LectureQuestionsContext {
     pub lec_id: u8,
+    pub title: String,
+    pub presenters: Vec<String>,
     pub questions: Vec<LectureQuestion>,
     pub parent: &'static str,
 }
@@ -179,6 +177,8 @@ pub(crate) fn questions(
 
     let ctx = LectureQuestionsContext {
         lec_id: num,
+        title: "".into(),   // not needed here
+        presenters: vec![], // same
         questions: qs,
         parent: "layout",
     };
@@ -208,6 +208,13 @@ pub(crate) fn questions_submit(
         bg.replace("answers", rec);
     }
 
+    let mut presenter_emails = vec![];
+    let presenters_res = bg.prep_exec("SELECT * FROM presenters WHERE lec = ?;", vec![num.into()]);
+    for p in presenters_res {
+        let email: String = from_value(p[1].clone());
+        presenter_emails.push(email);
+    }
+
     let answer_log = format!(
         "{}",
         data.answers
@@ -217,11 +224,13 @@ pub(crate) fn questions_submit(
             .join("\n-----\n")
     );
     if config.send_emails {
-        let recipients = if num < 90 {
+        let mut recipients = if num < 90 {
             config.staff.clone()
         } else {
             config.admins.clone()
         };
+
+        recipients.append(&mut presenter_emails);
 
         email::send(
             bg.log.clone(),

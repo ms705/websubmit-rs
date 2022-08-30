@@ -93,12 +93,33 @@ pub(crate) fn lec_add_submit(
 #[get("/<num>")]
 pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>>) -> Template {
     let mut bg = backend.lock().unwrap();
-    let res = bg.prep_exec(
+    let lres = bg.prep_exec(
+        "SELECT * FROM lectures WHERE lectures.id = ?",
+        vec![num.into()],
+    );
+    let pres = bg.prep_exec(
+        "SELECT lectures.id, presenters.email \
+         FROM lectures JOIN presenters ON lectures.id = presenters.lec \
+         WHERE lectures.id = ?",
+        vec![(num as u64).into()],
+    );
+    let qres = bg.prep_exec(
         "SELECT * FROM questions WHERE lec = ?",
         vec![(num as u64).into()],
     );
     drop(bg);
-    let mut qs: Vec<_> = res
+
+    assert!(lres.len() == 1);
+    let lec_title: String = from_value(lres[0][1].clone());
+    let mut lec_presenters = vec![];
+    if pres.len() > 0 {
+        for p in pres {
+            let presenter: String = from_value(p[1].clone());
+            lec_presenters.push(presenter);
+        }
+    }
+
+    let mut qs: Vec<_> = qres
         .into_iter()
         .map(|r| {
             let id: u64 = from_value(r[1].clone());
@@ -113,6 +134,8 @@ pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>
 
     let ctx = LectureQuestionsContext {
         lec_id: num,
+        title: lec_title,
+        presenters: lec_presenters,
         questions: qs,
         parent: "layout",
     };
