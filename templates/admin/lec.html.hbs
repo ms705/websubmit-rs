@@ -1,6 +1,18 @@
 {{#*inline "page"}}
     <h1>Lecture {{{ lec_id }}} admin</h1>
 
+    <form action="/admin/lec/edit/{{{ lec_id }}}" method="post" accept-charsets="utf-8">
+      <p>
+        <label>Title: <input name="lec_name" value="{{{ title }}}" />
+        </label>
+      </p>
+      <p>
+        <label>Presenters (CSV list of emails): <input name="lec_presenters" value="{{{ presenters }}}" />
+      </p>
+
+      <input type="submit" value="Update">
+    </form>
+
     <h2>Current questions</h2>
     <ul>
       {{#each questions}}
