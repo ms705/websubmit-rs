@@ -54,7 +54,14 @@ async fn main() {
     let config = args.config;
 
     let backend = Arc::new(Mutex::new(
-        MySqlBackend::new(&format!("{}", args.class), Some(new_logger()), config.prime).unwrap(),
+        MySqlBackend::new(
+            &config.db_user,
+            &config.db_password,
+            &format!("{}", args.class),
+            Some(new_logger()),
+            config.prime,
+        )
+        .unwrap(),
     ));
 
     let template_dir = config.template_dir.clone();

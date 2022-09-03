@@ -12,7 +12,13 @@ pub struct MySqlBackend {
 }
 
 impl MySqlBackend {
-    pub fn new(dbname: &str, log: Option<slog::Logger>, prime: bool) -> Result<Self> {
+    pub fn new(
+        user: &str,
+        password: &str,
+        dbname: &str,
+        log: Option<slog::Logger>,
+        prime: bool,
+    ) -> Result<Self> {
         let log = match log {
             None => slog::Logger::root(slog::Discard, o!()),
             Some(l) => l,
@@ -25,7 +31,11 @@ impl MySqlBackend {
             "Connecting to MySql DB and initializing schema {}...", dbname
         );
         let mut db = mysql::Conn::new(
-            Opts::from_url(&format!("mysql://root:password@127.0.0.1/{}", dbname)).unwrap(),
+            Opts::from_url(&format!(
+                "mysql://{}:{}@127.0.0.1/{}",
+                user, password, dbname
+            ))
+            .unwrap(),
         )
         .unwrap();
         assert_eq!(db.ping(), true);
@@ -37,7 +47,11 @@ impl MySqlBackend {
                 .unwrap();
             // reconnect
             db = mysql::Conn::new(
-                Opts::from_url(&format!("mysql://root:password@127.0.0.1/{}", dbname)).unwrap(),
+                Opts::from_url(&format!(
+                    "mysql://{}:{}@127.0.0.1/{}",
+                    user, password, dbname
+                ))
+                .unwrap(),
             )
             .unwrap();
             for line in schema.lines() {

@@ -6,6 +6,10 @@ use toml;
 pub struct Config {
     /// Textual identifier for class
     pub class: String,
+    /// Database user
+    pub db_user: String,
+    /// Database password
+    pub db_password: String,
     /// System admin addresses
     pub admins: Vec<String>,
     /// Staff email addresses
@@ -39,6 +43,8 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
 
     Ok(Config {
         class: value.get("class").unwrap().as_str().unwrap().into(),
+        db_user: value.get("db_user").unwrap().as_str().unwrap().into(),
+        db_password: value.get("db_password").unwrap().as_str().unwrap().into(),
         admins: value
             .get("admins")
             .unwrap()

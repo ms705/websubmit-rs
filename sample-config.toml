@@ -1,5 +1,9 @@
 # short class ID (human readable)
 class = "CSCI 2390"
+# MySQL database user
+db_user = "root"
+# MySQL database password
+db_password = "password"
 # list email addresses whose API keys get admin access
 admins = ["malte@cs.brown.edu"]
 # list email addresses who should receive notification emails
