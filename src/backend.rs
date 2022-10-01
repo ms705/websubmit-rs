@@ -9,6 +9,9 @@ pub struct MySqlBackend {
     pub log: slog::Logger,
     _schema: String,
     prep_stmts: HashMap<String, mysql::Statement>,
+    db_user: String,
+    db_password: String,
+    db_name: String,
 }
 
 impl MySqlBackend {
@@ -67,7 +70,21 @@ impl MySqlBackend {
             log: log,
             _schema: schema.to_owned(),
             prep_stmts: HashMap::new(),
+            db_user: String::from(user),
+            db_password: String::from(password),
+            db_name: String::from(dbname),
         })
+    }
+
+    fn reconnect(&mut self) {
+        self.handle = mysql::Conn::new(
+            Opts::from_url(&format!(
+                "mysql://{}:{}@127.0.0.1/{}",
+                self.db_user, self.db_password, self.db_name
+            ))
+            .unwrap(),
+        )
+        .unwrap();
     }
 
     pub fn prep_exec(&mut self, sql: &str, params: Vec<Value>) -> Vec<Vec<Value>> {
@@ -78,18 +95,30 @@ impl MySqlBackend {
                 .expect(&format!("failed to prepare statement \'{}\'", sql));
             self.prep_stmts.insert(sql.to_owned(), stmt);
         }
-        let res = self
-            .handle
-            .exec_iter(self.prep_stmts[sql].clone(), params)
-            .expect(&format!("query \'{}\' failed", sql));
-        let mut rows = vec![];
-        for row in res {
-            let rowvals = row.unwrap().unwrap();
-            let vals: Vec<Value> = rowvals.iter().map(|v| v.clone().into()).collect();
-            rows.push(vals);
+        loop {
+            match self
+                .handle
+                .exec_iter(self.prep_stmts[sql].clone(), params.clone())
+            {
+                Err(e) => {
+                    warn!(
+                        self.log,
+                        "query \'{}\' failed ({}), reconnecting to database", sql, e
+                    );
+                }
+                Ok(res) => {
+                    let mut rows = vec![];
+                    for row in res {
+                        let rowvals = row.unwrap().unwrap();
+                        let vals: Vec<Value> = rowvals.iter().map(|v| v.clone().into()).collect();
+                        rows.push(vals);
+                    }
+                    debug!(self.log, "executed query {}, got {} rows", sql, rows.len());
+                    return rows;
+                }
+            }
+            self.reconnect();
         }
-        debug!(self.log, "executed query {}, got {} rows", sql, rows.len());
-        return rows;
     }
 
     fn do_insert(&mut self, table: &str, vals: Vec<Value>, replace: bool) {
@@ -101,9 +130,13 @@ impl MySqlBackend {
             vals.iter().map(|_| "?").collect::<Vec<&str>>().join(",")
         );
         debug!(self.log, "executed insert query {} for row {:?}", q, vals);
-        self.handle
-            .exec_drop(q.clone(), vals)
-            .expect(&format!("failed to insert into {}, query {}!", table, q));
+        while let Err(e) = self.handle.exec_drop(q.clone(), vals.clone()) {
+            warn!(
+                self.log,
+                "failed to insert into {}, query {} ({}), reconnecting to database", table, q, e
+            );
+            self.reconnect();
+        }
     }
 
     pub fn insert(&mut self, table: &str, vals: Vec<Value>) {
