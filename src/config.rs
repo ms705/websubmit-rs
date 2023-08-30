@@ -10,6 +10,8 @@ pub struct Config {
     pub db_user: String,
     /// Database password
     pub db_password: String,
+    /// Database address with port.
+    pub db_addr: String,
     /// System admin addresses
     pub admins: Vec<String>,
     /// Staff email addresses
@@ -45,6 +47,7 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
         class: value.get("class").unwrap().as_str().unwrap().into(),
         db_user: value.get("db_user").unwrap().as_str().unwrap().into(),
         db_password: value.get("db_password").unwrap().as_str().unwrap().into(),
+        db_addr: value.get("db_addr").unwrap().as_str().unwrap().into(),
         admins: value
             .get("admins")
             .unwrap()

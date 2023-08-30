@@ -5,12 +5,13 @@ use mysql::*;
 use std::collections::HashMap;
 
 pub struct MySqlBackend {
-    pub handle: mysql::Conn,
+    handle: mysql::Conn,
     pub log: slog::Logger,
     _schema: String,
     prep_stmts: HashMap<String, mysql::Statement>,
     db_user: String,
     db_password: String,
+    db_addr: String,
     db_name: String,
 }
 
@@ -19,6 +20,7 @@ impl MySqlBackend {
         user: &str,
         password: &str,
         dbname: &str,
+        addr: &str,
         log: Option<slog::Logger>,
         prime: bool,
     ) -> Result<Self> {
@@ -35,8 +37,8 @@ impl MySqlBackend {
         );
         let mut db = mysql::Conn::new(
             Opts::from_url(&format!(
-                "mysql://{}:{}@127.0.0.1/{}",
-                user, password, dbname
+                "mysql://{}:{}@{}/",
+                user, password, addr
             ))
             .unwrap(),
         )
@@ -44,24 +46,17 @@ impl MySqlBackend {
         assert_eq!(db.ping(), true);
 
         if prime {
-            db.query_drop(format!("DROP DATABASE IF EXISTS {};", dbname))
-                .unwrap();
-            db.query_drop(format!("CREATE DATABASE {};", dbname))
-                .unwrap();
-            // reconnect
-            db = mysql::Conn::new(
-                Opts::from_url(&format!(
-                    "mysql://{}:{}@127.0.0.1/{}",
-                    user, password, dbname
-                ))
-                .unwrap(),
-            )
-            .unwrap();
+            let mut cmd = String::from("");
             for line in schema.lines() {
+                let line = line.trim();
                 if line.starts_with("--") || line.is_empty() {
                     continue;
                 }
-                db.query_drop(line).unwrap();
+                cmd += line;
+                if line.ends_with(";") {
+                    db.query_drop(cmd).unwrap();
+                    cmd = String::from("");
+                }
             }
         }
 
@@ -72,6 +67,7 @@ impl MySqlBackend {
             prep_stmts: HashMap::new(),
             db_user: String::from(user),
             db_password: String::from(password),
+            db_addr: String::from(addr),
             db_name: String::from(dbname),
         })
     }
@@ -79,8 +75,8 @@ impl MySqlBackend {
     fn reconnect(&mut self) {
         self.handle = mysql::Conn::new(
             Opts::from_url(&format!(
-                "mysql://{}:{}@127.0.0.1/{}",
-                self.db_user, self.db_password, self.db_name
+                "mysql://{}:{}@{}/",
+                self.db_user, self.db_password, self.db_addr
             ))
             .unwrap(),
         )

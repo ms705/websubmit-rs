@@ -58,6 +58,7 @@ async fn main() {
             &config.db_user,
             &config.db_password,
             &format!("{}", args.class),
+            &config.db_addr,
             Some(new_logger()),
             config.prime,
         )
