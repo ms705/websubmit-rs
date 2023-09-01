@@ -6,6 +6,8 @@ db_user = "root"
 db_password = "password"
 # Database address with port
 db_addr = "127.0.0.1:10001"
+# Backup log file
+backup_file = "/tmp/backup.sql"
 # list email addresses whose API keys get admin access
 admins = ["malte@cs.brown.edu"]
 # list email addresses who should receive notification emails

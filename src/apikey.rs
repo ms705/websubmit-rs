@@ -94,6 +94,8 @@ pub(crate) fn generate(
             format!("Your {} API key is: {}\n", config.class, hash.as_str(),),
         )
         .expect("failed to send API key email");
+    } else {
+        println!("GENERATED API KEY \"{}\" for email {}\n", hash.as_str(), data.email);
     }
     drop(bg);
 

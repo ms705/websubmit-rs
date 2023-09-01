@@ -40,7 +40,6 @@ impl<'r> FromRequest<'r> for Admin {
 
 #[derive(Debug, FromForm)]
 pub(crate) struct AddLectureQuestionForm {
-    q_id: u64,
     q_prompt: String,
 }
 
@@ -48,6 +47,12 @@ pub(crate) struct AddLectureQuestionForm {
 pub(crate) struct AdminLecAdd {
     lec_id: u8,
     lec_label: String,
+}
+
+#[derive(Debug, FromForm)]
+pub(crate) struct AdminLecEdit {
+    lec_name: String,
+    lec_presenters: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -98,23 +103,23 @@ pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>
         vec![num.into()],
     );
     let pres = bg.prep_exec(
-        "SELECT lectures.id, presenters.email \
-         FROM lectures JOIN presenters ON lectures.id = presenters.lec \
-         WHERE lectures.id = ?",
+        "SELECT presenters.email \
+         FROM presenters \
+         WHERE presenters.lecture_id = ?",
         vec![(num as u64).into()],
     );
     let qres = bg.prep_exec(
-        "SELECT * FROM questions WHERE lec = ?",
+        "SELECT questions.id, questions.question, questions.question_number FROM questions WHERE lecture_id = ?",
         vec![(num as u64).into()],
     );
     drop(bg);
 
-    assert!(lres.len() == 1);
+    assert_eq!(lres.len(), 1);
     let lec_title: String = from_value(lres[0][1].clone());
     let mut lec_presenters = vec![];
     if pres.len() > 0 {
         for p in pres {
-            let presenter: String = from_value(p[1].clone());
+            let presenter: String = from_value(p[0].clone());
             lec_presenters.push(presenter);
         }
     }
@@ -122,10 +127,10 @@ pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>
     let mut qs: Vec<_> = qres
         .into_iter()
         .map(|r| {
-            let id: u64 = from_value(r[1].clone());
             LectureQuestion {
-                id: id,
-                prompt: from_value(r[2].clone()),
+                id: from_value(r[0].clone()),
+                prompt: from_value(r[1].clone()),
+                question_num: from_value(r[2].clone()),
                 answer: None,
             }
         })
@@ -135,11 +140,39 @@ pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>
     let ctx = LectureQuestionsContext {
         lec_id: num,
         title: lec_title,
-        presenters: lec_presenters,
+        presenters: lec_presenters.join(","),
         questions: qs,
         parent: "layout",
     };
     Template::render("admin/lec", &ctx)
+}
+
+#[post("/<num>", data = "<data>")]
+pub(crate) fn lec_edit_submit(
+    _adm: Admin,
+    num: u8,
+    data: Form<AdminLecEdit>,
+    backend: &State<Arc<Mutex<MySqlBackend>>>
+) -> Redirect {
+    let mut bg = backend.lock().unwrap();
+    bg.prep_exec(
+        "UPDATE lectures SET label = ? WHERE id = ?",
+        vec![data.lec_name.clone().into(), num.into()],
+    );
+    bg.prep_exec(
+        "DELETE FROM presenters WHERE presenters.lecture_id = ?",
+        vec![num.into()]
+    );
+    for presenter in data.lec_presenters.split(",") {
+        let presenter = presenter.trim();
+        bg.insert(
+            "presenters(lecture_id, email)",
+            vec![num.into(), presenter.into()]
+        );
+    }
+    drop(bg);
+
+    Redirect::to(format!("/admin/lec/{}", num))
 }
 
 #[post("/<num>", data = "<data>")]
@@ -150,11 +183,24 @@ pub(crate) fn addq(
     backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Redirect {
     let mut bg = backend.lock().unwrap();
+
+    // Find question number within lecture.
+    let res = bg.prep_exec(
+        "SELECT lecture_id, COUNT(id) FROM questions WHERE lecture_id = ? GROUP BY lecture_id",
+        vec![(num as u64).into()],
+    );
+    let question_number = if res.len() > 0 {
+        from_value::<u64>(res[0][1].clone()) + 1
+    } else {
+        1u64
+    };
+
+    // Insert question.
     bg.insert(
-        "questions",
+        "questions(lecture_id, question_number, question)",
         vec![
             (num as u64).into(),
-            (data.q_id as u64).into(),
+            question_number.into(),
             data.q_prompt.to_string().into(),
         ],
     );
@@ -163,46 +209,46 @@ pub(crate) fn addq(
     Redirect::to(format!("/admin/lec/{}", num))
 }
 
-#[get("/<num>/<qnum>")]
+#[get("/<num>/<qid>")]
 pub(crate) fn editq(
     _adm: Admin,
     num: u8,
-    qnum: u8,
+    qid: u8,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let res = bg.prep_exec(
-        "SELECT * FROM questions WHERE lec = ?",
-        vec![(num as u64).into()],
+        "SELECT question, question_number FROM questions WHERE id = ?",
+        vec![(qid as u64).into()],
     );
     drop(bg);
+    println!("{:?}", res[0][0]);
+    println!("{:?}", res[0][1]);
 
+    assert_eq!(res.len(), 1);
     let mut ctx = HashMap::new();
-    for r in res {
-        if r[1] == (qnum as u64).into() {
-            ctx.insert("lec_qprompt", from_value(r[2].clone()));
-        }
-    }
+    ctx.insert("id", format!("{}", qid));
     ctx.insert("lec_id", format!("{}", num));
-    ctx.insert("lec_qnum", format!("{}", qnum));
+    ctx.insert("lec_qprompt", from_value::<String>(res[0][0].clone()));
+    ctx.insert("lec_qnum", format!("{}", from_value::<u64>(res[0][1].clone())));
     ctx.insert("parent", String::from("layout"));
     Template::render("admin/lecedit", &ctx)
 }
 
-#[post("/editq/<num>", data = "<data>")]
+#[post("/editq/<num>/<qid>", data = "<data>")]
 pub(crate) fn editq_submit(
     _adm: Admin,
     num: u8,
+    qid: u8,
     data: Form<AddLectureQuestionForm>,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Redirect {
     let mut bg = backend.lock().unwrap();
     bg.prep_exec(
-        "UPDATE questions SET question = ? WHERE lec = ? AND q = ?",
+        "UPDATE questions SET question = ? WHERE id = ?",
         vec![
             data.q_prompt.to_string().into(),
-            (num as u64).into(),
-            (data.q_id as u64).into(),
+            (qid as u64).into(),
         ],
     );
     drop(bg);
@@ -214,7 +260,6 @@ pub(crate) fn editq_submit(
 pub(crate) fn get_registered_users(
     _adm: Admin,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
-    config: &State<Config>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
     let res = bg.prep_exec("SELECT email, is_admin, apikey FROM users", vec![]);
@@ -225,11 +270,7 @@ pub(crate) fn get_registered_users(
         .map(|r| User {
             email: from_value(r[0].clone()),
             apikey: from_value(r[2].clone()),
-            is_admin: if config.admins.contains(&from_value(r[0].clone())) {
-                1
-            } else {
-                0
-            }, // r[1].clone().into(), this type conversion does not work
+            is_admin: from_value(r[1].clone()),
         })
         .collect();
 

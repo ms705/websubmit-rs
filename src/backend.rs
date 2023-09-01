@@ -3,6 +3,7 @@ use mysql::Opts;
 pub use mysql::Value;
 use mysql::*;
 use std::collections::HashMap;
+use std::io::Write;
 
 pub struct MySqlBackend {
     handle: mysql::Conn,
@@ -13,6 +14,7 @@ pub struct MySqlBackend {
     db_password: String,
     db_addr: String,
     db_name: String,
+    backup_file: std::fs::File,
 }
 
 impl MySqlBackend {
@@ -21,6 +23,7 @@ impl MySqlBackend {
         password: &str,
         dbname: &str,
         addr: &str,
+        backup_file: &str,
         log: Option<slog::Logger>,
         prime: bool,
     ) -> Result<Self> {
@@ -45,7 +48,21 @@ impl MySqlBackend {
         .unwrap();
         assert_eq!(db.ping(), true);
 
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .append(true)
+            .open(backup_file)
+            .unwrap();
+
         if prime {
+            file = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .write(true)
+                .open(backup_file)
+                .unwrap();
+
             let mut cmd = String::from("");
             for line in schema.lines() {
                 let line = line.trim();
@@ -69,6 +86,7 @@ impl MySqlBackend {
             db_password: String::from(password),
             db_addr: String::from(addr),
             db_name: String::from(dbname),
+            backup_file: file,
         })
     }
 
@@ -83,6 +101,7 @@ impl MySqlBackend {
         .unwrap();
     }
 
+    // TODO(babman): log DELETE and UPDATE statements as well.
     pub fn prep_exec(&mut self, sql: &str, params: Vec<Value>) -> Vec<Vec<Value>> {
         if !self.prep_stmts.contains_key(sql) {
             let stmt = self
@@ -119,6 +138,16 @@ impl MySqlBackend {
 
     fn do_insert(&mut self, table: &str, vals: Vec<Value>, replace: bool) {
         let op = if replace { "REPLACE" } else { "INSERT" };
+        // Write SQL statement to back up log file.
+        let log = format!(
+            "{} INTO {} VALUES ({});",
+            op,
+            table,
+            vals.iter().map(|v| v.as_sql(true)).collect::<Vec<_>>().join(",")
+        );
+        writeln!(self.backup_file, "{}", log).unwrap();
+
+        // Create prepared statement and
         let q = format!(
             "{} INTO {} VALUES ({})",
             op,
@@ -126,6 +155,7 @@ impl MySqlBackend {
             vals.iter().map(|_| "?").collect::<Vec<&str>>().join(",")
         );
         debug!(self.log, "executed insert query {} for row {:?}", q, vals);
+
         while let Err(e) = self.handle.exec_drop(q.clone(), vals.clone()) {
             warn!(
                 self.log,

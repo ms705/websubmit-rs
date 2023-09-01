@@ -3,26 +3,30 @@ CREATE DATA_SUBJECT TABLE users (
     email varchar(255),
     apikey varchar(255),
     is_admin int,
-    PRIMARY KEY (email)
+    PRIMARY KEY (email),
+    UNIQUE (apikey)
 );
 
 -- lectures and questions table are unsharded.
 CREATE TABLE lectures (
-    id int AUTO_INCREMENT,
+    id int,
     label varchar(255),
     PRIMARY KEY (id)
 );
+-- question_number: number *within* lecture
 CREATE TABLE questions (
     id int AUTO_INCREMENT,
     lecture_id int,
+    question_number int,
     question text,
     PRIMARY KEY (id),
     FOREIGN KEY (lecture_id) REFERENCES lectures(id)
 );
 
 -- Answers are owned by the student that provided the answer.
+-- id = format!('{}-{}', email, question_id)
 CREATE TABLE answers (
-    id int AUTO_INCREMENT,
+    id varchar(255),
     email varchar(255),
     question_id int,
     answer text,
@@ -40,6 +44,3 @@ CREATE TABLE presenters (
     PRIMARY KEY (id),
     FOREIGN KEY (lecture_id) REFERENCES lectures(id)
 );
-
--- View for tracking number of questions assigned to a lecture.
-CREATE VIEW lec_qcount as '"SELECT questions.lecture_id, COUNT(questions.id) AS qcount FROM questions GROUP BY questions.lecture_id"';
