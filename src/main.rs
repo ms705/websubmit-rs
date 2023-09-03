@@ -96,10 +96,7 @@ async fn main() {
             "/admin/lec/add",
             routes![admin::lec_add, admin::lec_add_submit],
         )
-        .mount(
-            "/admin/lec/edit",
-            routes![admin::lec_edit_submit]
-        )
+        .mount("/admin/lec/edit", routes![admin::lec_edit_submit])
         .mount("/admin/users", routes![admin::get_registered_users])
         .mount(
             "/admin/lec",

@@ -10,12 +10,19 @@ use rocket::form::{Form, FromForm};
 use rocket::response::Redirect;
 use rocket::State;
 use rocket_dyn_templates::Template;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
+
+pub fn escape(s: &str) -> String {
+    let s = s.trim();
+    s.chars()
+        .filter(|c| *c != '\'' && *c != '\"' && *c != '\\')
+        .collect::<String>()
+}
 
 #[derive(Debug, FromForm)]
 pub(crate) struct LectureQuestionSubmission {
-    answers: HashMap<u64, String>,
+    answers: BTreeMap<u64, String>,
 }
 
 #[derive(Serialize)]
@@ -40,7 +47,7 @@ struct LectureAnswer {
     id: u64,
     user: String,
     answer: String,
-    time: Option<NaiveDateTime>,
+    time: String,
 }
 
 #[derive(Serialize)]
@@ -72,32 +79,24 @@ pub(crate) fn leclist(
     config: &State<Config>,
 ) -> Template {
     let mut bg = backend.lock().unwrap();
-    let res = bg.prep_exec(
-        "SELECT lectures.id, lectures.label, COUNT(questions.id) \
-         FROM lectures LEFT JOIN questions ON (lectures.id = questions.lecture_id) \
-         GROUP BY lectures.id, lectures.label",
-        vec![],
-    );
+    let res = bg.prep_exec("SELECT * FROM lectures_with_question_counts", vec![]);
 
     let user = apikey.user.clone();
     let admin = config.admins.contains(&user);
 
-    // TODO(babman): answer count.
-    /*
     let answers_res = bg.prep_exec(
-        "SELECT questions.lecture_id, COUNT(answers.id) \
-         FROM questions LEFT JOIN answers ON (questions.id = answers.question_id) \
-         WHERE answers.email = ? \
-         GROUP BY questions.lecture_id",
+        "SELECT questions.lecture_id, answers.email, COUNT(answers.id) \
+         FROM questions JOIN answers ON (questions.id = answers.question_id) \
+         WHERE answers.answer != '' \
+         GROUP BY questions.lecture_id, answers.email \
+         HAVING answers.email = ?",
         vec![user.into()],
     );
-    */
+
     let mut answers_count: HashMap<u64, u64> = HashMap::new();
-    /*
     for row in answers_res {
-        answers_count.insert(from_value(row[0].clone()), from_value(row[1].clone()));
+        answers_count.insert(from_value(row[0].clone()), from_value(row[2].clone()));
     }
-    */
 
     let mut lecs: Vec<_> = res
         .into_iter()
@@ -140,7 +139,7 @@ pub(crate) fn answers(
         "SELECT answers.email, questions.question_number, answers.answer, answers.submitted_at, questions.lecture_id \
              FROM answers JOIN questions ON (answers.question_id = questions.id) \
              WHERE questions.lecture_id = ? \
-             ORDER BY (answers.email, questions.question_number)",
+             ORDER BY answers.email, questions.question_number",
         vec![key],
     );
     drop(bg);
@@ -150,10 +149,12 @@ pub(crate) fn answers(
             id: from_value(r[1].clone()),
             user: from_value(r[0].clone()),
             answer: from_value(r[2].clone()),
-            time: if let Value::Time(..) = r[3] {
-                Some(from_value::<NaiveDateTime>(r[3].clone()))
-            } else {
-                None
+            time: match r[3] {
+                Value::Time(..) | Value::Date(..) => {
+                    let date = from_value::<NaiveDateTime>(r[3].clone());
+                    date.format("%Y-%m-%d %H:%M:%S%.f").to_string()
+                }
+                _ => String::from(""),
             },
         })
         .collect();
@@ -172,8 +173,6 @@ pub(crate) fn questions(
     num: u8,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Template {
-    use std::collections::HashMap;
-
     let mut bg = backend.lock().unwrap();
     let key: Value = (num as u64).into();
 
@@ -194,7 +193,7 @@ pub(crate) fn questions(
 
     let res = bg.prep_exec(
         "SELECT id, question, question_number FROM questions WHERE lecture_id = ?",
-        vec![key]
+        vec![key],
     );
     drop(bg);
 
@@ -236,20 +235,22 @@ pub(crate) fn questions_submit(
 
     // insert/replace all answers.
     for (id, answer) in &data.answers {
-        // TODO(babman): handle replace here properly.
-        bg.replace("answers(id, email, question_id, answer, submitted_at)", vec![
-            format!("{}-{}", apikey.user, id).into(),
-            apikey.user.clone().into(),
-            (*id).into(),
-            answer.clone().into(),
-            ts.clone(),
-        ]);
+        bg.replace(
+            "answers(id, email, question_id, answer, submitted_at)",
+            vec![
+                format!("{}-{}", apikey.user, id).into(),
+                apikey.user.clone().into(),
+                (*id).into(),
+                escape(answer).into(),
+                ts.clone(),
+            ],
+        );
     }
 
     // Map question id to question number (for emails).
-    let id_to_number_res =bg.prep_exec(
+    let id_to_number_res = bg.prep_exec(
         "SELECT id, question_number from questions WHERE lecture_id = ?",
-        vec![num.into()]
+        vec![num.into()],
     );
     let mut id_to_number_map: HashMap<u64, u64> = HashMap::new();
     for row in id_to_number_res {
@@ -261,13 +262,10 @@ pub(crate) fn questions_submit(
         "{}",
         data.answers
             .iter()
-            .map(|(i, t)|
-                format!("Question {}:\n{}", id_to_number_map.get(i).unwrap_or(i), t)
-            )
+            .map(|(i, t)| format!("Question {}:\n{}", id_to_number_map.get(i).unwrap_or(i), t))
             .collect::<Vec<_>>()
             .join("\n-----\n")
     );
-    println!("ANSWER LOG\n{}\n\n------------------------\n\n", answer_log);
 
     let mut recipients = if num < 90 {
         config.staff.clone()
@@ -276,7 +274,10 @@ pub(crate) fn questions_submit(
     };
 
     // Get the emails of all presents.
-    let presenters_res = bg.prep_exec("SELECT email FROM presenters WHERE lecture_id = ?;", vec![num.into()]);
+    let presenters_res = bg.prep_exec(
+        "SELECT email FROM presenters WHERE lecture_id = ?;",
+        vec![num.into()],
+    );
     for p in presenters_res {
         recipients.push(from_value(p[0].clone()));
     }

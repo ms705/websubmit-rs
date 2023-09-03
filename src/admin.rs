@@ -126,13 +126,11 @@ pub(crate) fn lec(_adm: Admin, num: u8, backend: &State<Arc<Mutex<MySqlBackend>>
 
     let mut qs: Vec<_> = qres
         .into_iter()
-        .map(|r| {
-            LectureQuestion {
-                id: from_value(r[0].clone()),
-                prompt: from_value(r[1].clone()),
-                question_num: from_value(r[2].clone()),
-                answer: None,
-            }
+        .map(|r| LectureQuestion {
+            id: from_value(r[0].clone()),
+            prompt: from_value(r[1].clone()),
+            question_num: from_value(r[2].clone()),
+            answer: None,
         })
         .collect();
     qs.sort_by(|a, b| a.id.cmp(&b.id));
@@ -152,7 +150,7 @@ pub(crate) fn lec_edit_submit(
     _adm: Admin,
     num: u8,
     data: Form<AdminLecEdit>,
-    backend: &State<Arc<Mutex<MySqlBackend>>>
+    backend: &State<Arc<Mutex<MySqlBackend>>>,
 ) -> Redirect {
     let mut bg = backend.lock().unwrap();
     bg.prep_exec(
@@ -161,13 +159,13 @@ pub(crate) fn lec_edit_submit(
     );
     bg.prep_exec(
         "DELETE FROM presenters WHERE presenters.lecture_id = ?",
-        vec![num.into()]
+        vec![num.into()],
     );
     for presenter in data.lec_presenters.split(",") {
         let presenter = presenter.trim();
         bg.insert(
             "presenters(lecture_id, email)",
-            vec![num.into(), presenter.into()]
+            vec![num.into(), presenter.into()],
         );
     }
     drop(bg);
@@ -230,7 +228,10 @@ pub(crate) fn editq(
     ctx.insert("id", format!("{}", qid));
     ctx.insert("lec_id", format!("{}", num));
     ctx.insert("lec_qprompt", from_value::<String>(res[0][0].clone()));
-    ctx.insert("lec_qnum", format!("{}", from_value::<u64>(res[0][1].clone())));
+    ctx.insert(
+        "lec_qnum",
+        format!("{}", from_value::<u64>(res[0][1].clone())),
+    );
     ctx.insert("parent", String::from("layout"));
     Template::render("admin/lecedit", &ctx)
 }
@@ -246,10 +247,7 @@ pub(crate) fn editq_submit(
     let mut bg = backend.lock().unwrap();
     bg.prep_exec(
         "UPDATE questions SET question = ? WHERE id = ?",
-        vec![
-            data.q_prompt.to_string().into(),
-            (qid as u64).into(),
-        ],
+        vec![data.q_prompt.to_string().into(), (qid as u64).into()],
     );
     drop(bg);
 

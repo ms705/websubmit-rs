@@ -95,7 +95,11 @@ pub(crate) fn generate(
         )
         .expect("failed to send API key email");
     } else {
-        println!("GENERATED API KEY \"{}\" for email {}\n", hash.as_str(), data.email);
+        println!(
+            "GENERATED API KEY \"{}\" for email {}\n",
+            hash.as_str(),
+            data.email
+        );
     }
     drop(bg);
 

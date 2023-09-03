@@ -39,11 +39,7 @@ impl MySqlBackend {
             "Connecting to MySql DB and initializing schema {}...", dbname
         );
         let mut db = mysql::Conn::new(
-            Opts::from_url(&format!(
-                "mysql://{}:{}@{}/",
-                user, password, addr
-            ))
-            .unwrap(),
+            Opts::from_url(&format!("mysql://{}:{}@{}/", user, password, addr)).unwrap(),
         )
         .unwrap();
         assert_eq!(db.ping(), true);
@@ -143,7 +139,10 @@ impl MySqlBackend {
             "{} INTO {} VALUES ({});",
             op,
             table,
-            vals.iter().map(|v| v.as_sql(true)).collect::<Vec<_>>().join(",")
+            vals.iter()
+                .map(|v| v.as_sql(true))
+                .collect::<Vec<_>>()
+                .join(",")
         );
         writeln!(self.backup_file, "{}", log).unwrap();
 
