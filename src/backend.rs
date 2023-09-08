@@ -66,6 +66,7 @@ impl MySqlBackend {
                     continue;
                 }
                 cmd += line;
+                cmd += " ";
                 if line.ends_with(";") {
                     db.query_drop(cmd).unwrap();
                     cmd = String::from("");
