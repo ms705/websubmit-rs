@@ -58,8 +58,8 @@ debugging output.
 ```bash
 bazel run //k9db -- --db_path="<path/to/dir>" --db_name="<DBname>" > log.out 2> error.out &
 # For example, this creates a database under /data/csci2390
-mkdir -p /data
-bazel run //k9db -- --db_path="/home/bab/data" --db_name="csci2390" > log.out 2> error.out &
+mkdir -p /k9db_data
+bazel run //k9db -- --db_path="/k9db_data" --db_name="csci2390" > log.out 2> error.out &
 ```
 
 You can shutdown K9db at any time, and then restart it without losing data by running
