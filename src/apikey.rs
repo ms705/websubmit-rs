@@ -6,7 +6,7 @@ use crypto::sha2::Sha256;
 use mysql::from_value;
 use rocket::form::Form;
 use rocket::http::Status;
-use rocket::http::{Cookie, CookieJar};
+use rocket::http::{Cookie, CookieJar, SameSite};
 use rocket::outcome::IntoOutcome;
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::Redirect;
@@ -153,7 +153,8 @@ pub(crate) fn check(
     if res.is_err() {
         Redirect::to("/")
     } else {
-        let cookie = Cookie::build("apikey", data.key.clone()).path("/").finish();
+        let mut cookie = Cookie::build("apikey", data.key.clone()).path("/").finish();
+        cookie.set_same_site(SameSite::Lax);
         cookies.add(cookie);
         Redirect::to("/leclist")
     }
