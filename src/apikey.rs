@@ -80,7 +80,7 @@ pub(crate) fn generate(
 
     // insert into MySql if not exists
     let mut bg = backend.lock().unwrap();
-    bg.insert(
+    bg.replace(
         "users",
         vec![data.email.as_str().into(), hash.as_str().into(), is_admin],
     );
