@@ -13,13 +13,6 @@ use rocket_dyn_templates::Template;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 
-pub fn escape(s: &str) -> String {
-    let s = s.trim();
-    s.chars()
-        .filter(|c| *c != '\'' && *c != '\"' && *c != '\\')
-        .collect::<String>()
-}
-
 #[derive(Debug, FromForm)]
 pub(crate) struct LectureQuestionSubmission {
     answers: BTreeMap<u64, String>,
@@ -241,7 +234,7 @@ pub(crate) fn questions_submit(
                 format!("{}-{}", apikey.user, id).into(),
                 apikey.user.clone().into(),
                 (*id).into(),
-                escape(answer).into(),
+                answer.into(),
                 ts.clone(),
             ],
         );
