@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::{Error, ErrorKind, Read};
-use toml;
+use toml::Table;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -22,7 +22,7 @@ pub struct Config {
     pub secret: String,
     /// Whether to send emails
     pub send_emails: bool,
-    /// Whether to reset and prime db 
+    /// Whether to reset and prime db
     pub prime: bool,
 }
 
@@ -31,14 +31,14 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
     let mut buf = String::new();
     f.read_to_string(&mut buf)?;
 
-    let value = match toml::Parser::new(&buf).parse() {
-        None => {
+    let value = match buf.parse::<Table>() {
+        Err(_) => {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "failed to parse config!",
             ))
         }
-        Some(v) => v,
+        Ok(v) => v,
     };
 
     Ok(Config {
@@ -48,7 +48,7 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
         admins: value
             .get("admins")
             .unwrap()
-            .as_slice()
+            .as_array()
             .unwrap()
             .into_iter()
             .map(|v| v.as_str().unwrap().into())
@@ -56,7 +56,7 @@ pub(crate) fn parse(path: &str) -> Result<Config, Error> {
         staff: value
             .get("staff")
             .unwrap()
-            .as_slice()
+            .as_array()
             .unwrap()
             .into_iter()
             .map(|v| v.as_str().unwrap().into())

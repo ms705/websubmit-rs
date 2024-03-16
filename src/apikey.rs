@@ -1,8 +1,6 @@
 use crate::backend::MySqlBackend;
 use crate::config::Config;
 use crate::email;
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
 use mysql::from_value;
 use rocket::form::Form;
 use rocket::http::Status;
@@ -12,6 +10,7 @@ use rocket::request::{self, FromRequest, Request};
 use rocket::response::Redirect;
 use rocket::State;
 use rocket_dyn_templates::Template;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -67,10 +66,10 @@ pub(crate) fn generate(
 ) -> Template {
     // generate an API key from email address
     let mut hasher = Sha256::new();
-    hasher.input_str(&data.email);
+    hasher.update(&data.email);
     // add a secret to make API keys unforgeable without access to the server
-    hasher.input_str(&config.secret);
-    let hash = hasher.result_str();
+    hasher.update(&config.secret);
+    let hash = hasher.finalize();
 
     let is_admin = if config.admins.contains(&data.email) {
         1.into()
@@ -82,7 +81,11 @@ pub(crate) fn generate(
     let mut bg = backend.lock().unwrap();
     bg.insert(
         "users",
-        vec![data.email.as_str().into(), hash.as_str().into(), is_admin],
+        vec![
+            data.email.as_str().into(),
+            format!("{:x}", hash).into(),
+            is_admin,
+        ],
     );
 
     if config.send_emails {
@@ -91,7 +94,11 @@ pub(crate) fn generate(
             "no-reply@csci2390-submit.cs.brown.edu".into(),
             vec![data.email.clone()],
             format!("{} API key", config.class),
-            format!("Your {} API key is: {}\n", config.class, hash.as_str(),),
+            format!(
+                "Your {} API key is: {}\n",
+                config.class,
+                format!("{:x}", hash),
+            ),
         )
         .expect("failed to send API key email");
     }
